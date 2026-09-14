@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Bizmates のレッスンで詰まったことと単語を30秒で記録して、次回の5分予習まで一息でつなぐ学習ログ。">
+<meta name="theme-color" content="#0e6db4">
+<title>Bizmates Log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📗</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+    <h1>Bizmates Log</h1>
+    <span class="sub" id="rankLine">Level 1 · Rank C</span>
+  </div>
+
+  <!-- ============ 記録 ============ -->
+  <section class="view" id="view-log" aria-labelledby="tab-log">
+
+    <div class="card">
+      <h2>レッスンを録る → AI にみてもらう <span class="jp">任意・キー設定が必要</span></h2>
+      <div class="row">
+        <button type="button" id="recStart">🎙 録音をはじめる</button>
+        <button type="button" class="danger" id="recStop" hidden>■ 停止</button>
+        <span class="badge" id="recClock" aria-live="off">0:00</span>
+      </div>
+      <p class="hint" id="aiStatus">マイクで録音します。PC で受けるなら、スピーカーで音を出すとトレーナーの声も入ります。</p>
+      <label class="field">または、Notion などの文字起こしを貼り付け
+        <textarea id="aiPaste" placeholder="日英が混ざった文字起こしのままで大丈夫。Claude が文脈から整理します。"></textarea>
+      </label>
+      <div class="row">
+        <button type="button" class="primary" id="aiRun" disabled>文字起こし → AI フィードバック</button>
+        <button type="button" class="ghost" id="recSave" hidden>音声を保存</button>
+      </div>
+      <div id="aiResult" class="airesult" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2>今日のレッスン <span class="jp">終わったらここから30秒</span></h2>
+      <div class="lessonpick">
+        <select id="logLesson" aria-label="レッスンを選ぶ"></select>
+        <span class="badge" id="logLessonBadge">Rank C</span>
+      </div>
+      <p class="hint" id="logLessonHint"></p>
+      <div class="seg" role="group" aria-label="today の手応え">
+        <button type="button" data-rating="3" aria-pressed="false">◎ 言えた</button>
+        <button type="button" data-rating="2" aria-pressed="false">○ まあまあ</button>
+        <button type="button" data-rating="1" aria-pressed="false">△ きつかった</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>詰まったこと <span class="jp">言いたかったのに出てこなかった</span></h2>
+      <label class="field">日本語で言いたかったこと
+        <input type="text" id="stuckJa" placeholder="例: その件は来週までに終わらせます" autocomplete="off">
+      </label>
+      <label class="field">正しい言い方 <span>（トレーナーに直されたら／任意）</span>
+        <input type="text" id="stuckFix" placeholder="例: I'll get it done by next week." autocomplete="off">
+      </label>
+      <button type="button" id="stuckAdd">＋ 追加する</button>
+      <ul class="items" id="stuckList"></ul>
+      <p class="hint">「正しい言い方」まで入れると単語カードになって、次の予習とレビューに出てきます。空でも予習の1ステップ目には出ます。</p>
+    </div>
+
+    <div class="card">
+      <h2>覚えたい単語・フレーズ <span class="jp">レッスン中に出たもの</span></h2>
+      <label class="field">英語
+        <input type="text" id="wordEn" placeholder="例: get it done by" autocomplete="off">
+      </label>
+      <label class="field">意味
+        <input type="text" id="wordJa" placeholder="例: 〜までに終わらせる" autocomplete="off">
+      </label>
+      <button type="button" id="wordAdd">＋ 追加する</button>
+      <ul class="items" id="wordList"></ul>
+    </div>
+
+    <div class="card">
+      <h2>ひとことメモ <span class="jp">任意</span></h2>
+      <textarea id="memo" placeholder="次はもっとゆっくり話す。Act で詰まったら In order to から入る。"></textarea>
+      <button type="button" class="primary" id="saveSession">このレッスンを記録する</button>
+      <p class="hint" id="saveHint"></p>
+    </div>
+
+  </section>
+
+  <!-- ============ 5分予習 ============ -->
+  <section class="view" id="view-prep" hidden aria-labelledby="tab-prep">
+
+    <div class="card">
+      <h2>5分予習 <span class="jp">次のレッスンのぶん</span></h2>
+      <div class="lessonpick">
+        <select id="prepLesson" aria-label="予習するレッスンを選ぶ"></select>
+        <span class="badge" id="prepBadge">次回</span>
+      </div>
+      <p class="hint" id="prepTopic"></p>
+
+      <div class="timer">
+        <span class="clock" id="clock">5:00</span>
+        <span class="total" id="clockStep">タップして開始</span>
+      </div>
+      <div class="track"><i id="track"></i></div>
+
+      <div class="row">
+        <button type="button" class="primary" id="prepStart">▶ 5分はじめる</button>
+        <button type="button" id="prepNext" disabled>次のステップ →</button>
+      </div>
+      <div class="row tight">
+        <button type="button" class="ghost" id="prepReset" disabled>やめる</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>いまやること <span class="jp">声に出すのが全部</span></h2>
+      <div class="steps" id="stepList"></div>
+      <div id="cueBox"></div>
+    </div>
+
+  </section>
+
+  <!-- ============ 単語 ============ -->
+  <section class="view" id="view-cards" hidden aria-labelledby="tab-cards">
+
+    <div class="card">
+      <h2>今日のレビュー <span class="jp">日本語を見て英語が出るか</span></h2>
+      <p class="hint" id="cardsStatus"></p>
+      <div class="flash" id="flash">
+        <p class="empty" id="flashEmpty">今日ぶんのカードはありません。<br>レッスンを記録すると、詰まったことと単語がカードになります。</p>
+        <div id="flashBody" hidden>
+          <p class="meta" id="flashMeta"></p>
+          <p class="prompt" id="flashPrompt"></p>
+          <p class="answer" id="flashAnswer" hidden></p>
+        </div>
+      </div>
+      <div class="row" id="flashControls" hidden>
+        <button type="button" class="primary" id="flashShow">答えを見る</button>
+      </div>
+      <div class="row" id="flashGrade" hidden>
+        <button type="button" id="gradeNg">△ 出なかった</button>
+        <button type="button" class="primary" id="gradeOk">◎ 言えた</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>カード一覧 <span class="jp">直近に追加したもの</span></h2>
+      <ul class="items" id="allCards"></ul>
+    </div>
+
+  </section>
+
+  <!-- ============ 履歴 ============ -->
+  <section class="view" id="view-history" hidden aria-labelledby="tab-history">
+
+    <div class="card">
+      <h2>記録 <span class="jp">積み上がったもの</span></h2>
+      <div class="stats">
+        <div class="stat"><span class="n" id="stSessions">0</span><span class="k">レッスン</span></div>
+        <div class="stat"><span class="n" id="stCards">0</span><span class="k">カード</span></div>
+        <div class="stat"><span class="n" id="stStreak">0</span><span class="k">連続日数</span></div>
+      </div>
+      <p class="hint" id="historyHint"></p>
+    </div>
+
+    <div class="card">
+      <h2>レッスン履歴 <span class="jp">タップで中身</span></h2>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="card">
+      <h2>AI 設定 <span class="jp">キーはこの端末にだけ保存・書き出しに含まれない</span></h2>
+      <label class="field">Anthropic API キー（フィードバック用）
+        <input type="password" id="keyAnthropic" placeholder="sk-ant-…" autocomplete="off">
+      </label>
+      <label class="field">OpenAI API キー（音声の文字起こし用・貼り付け運用なら不要）
+        <input type="password" id="keyOpenai" placeholder="sk-…" autocomplete="off">
+      </label>
+      <button type="button" id="saveKeys">キーを保存</button>
+      <p class="hint">ブラウザから API を直接呼びます。自分だけが開く、自分の端末で使う前提です。共有端末では使わないでください。</p>
+    </div>
+
+    <div class="card">
+      <h2>データ <span class="jp">この端末のブラウザに保存されています</span></h2>
+      <p class="hint">記録はサーバーに送られません。端末を変えるときや、念のためのバックアップは書き出しから。</p>
+      <div class="row">
+        <button type="button" id="exportBtn">JSON を書き出す</button>
+        <button type="button" id="importBtn">読み込む</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <div class="row">
+        <button type="button" class="danger ghost" id="wipeBtn">すべて消す</button>
+      </div>
+    </div>
+
+  </section>
+
+  <footer class="foot">
+    Bizmates Level 1 · Rank C（Lesson 1–20）の Key Phrases を収録<br>
+    記録はこの端末の localStorage にのみ保存されます
+  </footer>
+
+</div>
+
+<nav class="nav" aria-label="画面切り替え">
+  <button type="button" id="tab-log" data-view="log" aria-current="page"><span class="ico">📝</span>記録</button>
+  <button type="button" id="tab-prep" data-view="prep"><span class="ico">⏱</span>5分予習</button>
+  <button type="button" id="tab-cards" data-view="cards"><span class="ico">🗂</span>単語<span class="dot" id="dueDot" hidden>0</span></button>
+  <button type="button" id="tab-history" data-view="history"><span class="ico">📈</span>履歴</button>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="assets/app.js"></script>
+</body>
+</html>
