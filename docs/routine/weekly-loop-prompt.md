@@ -13,7 +13,7 @@ claude.ai のクラウドルーティン（trigger `trig_01XqEWAUHS4sSShzC3hUCax
 - 集計データ: GitHub `kuroyanyan/improve-language-data`（private）。`latest.json` と `snapshots/YYYY-MM-DD.json`
 - 規約: リポジトリの `docs/LOOP.md`。目的・指標3層・ガードレール G0〜G11・上方修正の規則・週次サイクルはこれが唯一のソース。読まずに進めない。
 - 仮説: `docs/hypotheses/H-*.md`。判定基準は先に固定されており、後から動かさない。
-- 使う道具: GitHub の MCP ツール（get_file_contents / create_or_update_file / create_branch / push_files / create_pull_request / list_pull_requests など）。無い場合はサンドボックスの `gh` と `git`。他のリポジトリ（japantradingcardcenter 配下など）には絶対に触れない。
+- 使う道具: GitHub の MCP ツール（get_file_contents / create_or_update_file / create_branch / push_files / create_pull_request / list_pull_requests など）。無い場合はサンドボックスの `gh` と `git`。どちらも使えなければ、その旨と設定手順（ルーティン管理画面 https://claude.ai/code/routines/trig_01XqEWAUHS4sSShzC3hUCaxK でコネクタ GitHub を追加するか、ソースにリポジトリ kuroyanyan/improve-language を追加）を1本だけ通知して終了する。他のリポジトリ（japantradingcardcenter 配下など）には絶対に触れない。
 - 通知: PushNotification（3行以内。URL を必ず含める）。
 
 0. 日付
