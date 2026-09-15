@@ -14,13 +14,14 @@
 
 <div class="app">
 
-  <div class="topbar">
-    <h1>Bizmates Log</h1>
+  <header class="topbar">
+    <button type="button" class="menubtn" id="menuBtn" aria-label="メニューを開く" aria-expanded="false" aria-controls="drawer">☰</button>
+    <h1>Bizmates Log <span class="where" id="whereLabel">記録</span></h1>
     <div class="rankbar">
       <select id="rankPick" class="rankpick" aria-label="Rank を切り替える" hidden></select>
       <span class="sub" id="rankLine">Level 1</span>
     </div>
-  </div>
+  </header>
 
   <!-- ============ 記録 ============ -->
   <section class="view" id="view-log" aria-labelledby="tab-log">
@@ -322,12 +323,17 @@
 
 </div>
 
-<nav class="nav" aria-label="画面切り替え">
-  <button type="button" id="tab-log" data-view="log" aria-current="page"><span class="ico">📝</span>記録</button>
-  <button type="button" id="tab-prep" data-view="prep"><span class="ico">⏱</span>5分予習</button>
-  <button type="button" id="tab-kanpe" data-view="kanpe"><span class="ico">📖</span>カンペ</button>
-  <button type="button" id="tab-cards" data-view="cards"><span class="ico">🗣</span>自分の話<span class="dot" id="dueDot" hidden>0</span></button>
-  <button type="button" id="tab-history" data-view="history"><span class="ico">📈</span>履歴</button>
+<div class="backdrop" id="backdrop" hidden></div>
+<nav class="drawer" id="drawer" aria-label="画面切り替え" hidden>
+  <div class="drawer-head">
+    <span class="drawer-title">Bizmates Log</span>
+    <button type="button" class="icon" id="menuClose" aria-label="メニューを閉じる">✕</button>
+  </div>
+  <button type="button" id="tab-log" data-view="log" aria-current="page"><span class="ico">📝</span><span class="lbl">記録<small>レッスン後30秒。録音 → AI が埋める</small></span></button>
+  <button type="button" id="tab-prep" data-view="prep"><span class="ico">⏱</span><span class="lbl">5分予習<small>次のレッスンの前に</small></span></button>
+  <button type="button" id="tab-kanpe" data-view="kanpe"><span class="ico">📖</span><span class="lbl">カンペ<small>レッスン中に開いておく</small></span></button>
+  <button type="button" id="tab-cards" data-view="cards"><span class="ico">🗣</span><span class="lbl">自分の話<small>ピース・60秒サンプル・単語カード</small></span><span class="dot" id="dueDot" hidden>0</span></button>
+  <button type="button" id="tab-history" data-view="history"><span class="ico">📈</span><span class="lbl">履歴<small>今週・記録証・設定・同期</small></span></button>
 </nav>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

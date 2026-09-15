@@ -6,6 +6,7 @@ const STORAGE = 'bizmates-log/v1';
 const PIECE_JA = '最近、人はどうやって成長するかをよく考える\n面接をたくさんするので、安心できて仕事が難しいときに人が伸びるのを見る\nだからそういうチームを作ろうとしている\nあなたが一番成長したのは何のとき？';
 const PIECE_EN = 'Lately, I think a lot about how people grow.\nPeople grow when they feel safe and the work is hard.\nSo I try to make that kind of team.\nWhat made you grow the most?';
 
+const go = async (page, view) => { await page.click('#menuBtn'); await page.click(`#tab-${view}`); };
 const state = (page) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || 'null'), STORAGE);
 const patchState = (page, fn) => page.evaluate(([k, src]) => {
   const st = JSON.parse(localStorage.getItem(k));
@@ -15,7 +16,7 @@ const patchState = (page, fn) => page.evaluate(([k, src]) => {
 }, [STORAGE, fn]);
 
 async function addPiece(page, ja = PIECE_JA, en = PIECE_EN) {
-  await page.click('#tab-cards');
+  await go(page, 'cards');
   await page.fill('#pieceJa', ja);
   await page.fill('#pieceEn', en);
   await page.click('#pieceSave');
@@ -44,7 +45,7 @@ test('記録 → 予習へ遷移、次レッスン繰り上げ、カード生成
   expect(s.sessions[0]).toMatchObject({ lesson: 14, rank: 'C', rating: 3, talkMin: 10 });
   expect(s.profile.lastLogLesson).toBe(15);
   expect(s.cards).toHaveLength(1);
-  await page.click('#tab-history');
+  await go(page, 'history');
   await expect(page.locator('#historyList details').first()).toContainText('L14');
   await expect(page.locator('#historyList details').first()).toContainText('フリートーク 10分');
 });
@@ -62,7 +63,7 @@ test('ピース: 質問なしは保存できない → 作成 → 予習で宣�
   await patchState(page, "st.pieces[0].uses.push({date:'2026-01-05',lesson:1,ok:true},{date:'2026-01-06',lesson:2,ok:true});");
   await page.reload();
 
-  await page.click('#tab-prep');
+  await go(page, 'prep');
   await page.click('#prepStart');
   await page.click('#prepNext');
   await page.click('#prepNext');
@@ -76,7 +77,7 @@ test('ピース: 質問なしは保存できない → 作成 → 予習で宣�
   expect(s1.preps).toHaveLength(1);
   expect(s1.preps[0].pieceId).toBe(s1.pieces[0].id);
 
-  await page.click('#tab-log');
+  await go(page, 'log');
   await expect(page.locator('#declaredBox .item')).toHaveCount(1);
   await page.click('#declaredBox .item button.yes');
   await expect(page.locator('#declaredBox .item button.yes')).toHaveAttribute('aria-pressed', 'true');
@@ -86,18 +87,18 @@ test('ピース: 質問なしは保存できない → 作成 → 予習で宣�
   expect(s2.sessions[0].declared).toEqual([expect.objectContaining({ ok: true })]);
   expect(s2.pieces[0].uses).toHaveLength(3);
   expect(s2.pieces[0].graduatedAt).toBeTruthy();
-  await page.click('#tab-history');
+  await go(page, 'history');
   await expect(page.locator('#stPieces')).toHaveText('1');
   await expect(page.locator('#historyList details').first()).toContainText('宣言したピース');
 });
 
 test('実戦ログ・今週の日数・今月の記録証', async ({ page }) => {
   await page.click('#saveSession');
-  await page.click('#tab-log');
+  await go(page, 'log');
   await page.fill('#realText', '面接の冒頭で自己紹介を英語でした');
   await page.click('#realSave');
   await expect(page.locator('#toast')).toContainText('実戦');
-  await page.click('#tab-history');
+  await go(page, 'history');
   await expect(page.locator('#stWeek')).toHaveText('1/7');
   await expect(page.locator('#stReal')).toHaveText('1');
   await expect(page.locator('#monthStats .stat')).toHaveCount(4);
@@ -118,7 +119,7 @@ test('Rank 切替で教材が変わり、記録はランク付きで残る', asy
   await expect(page.locator('#rankPick')).toHaveValue('D');
   await page.selectOption('#rankPick', 'C');
   await expect(page.locator('#logLesson option').first()).toContainText('Talking about Yourself');
-  await page.click('#tab-history');
+  await go(page, 'history');
   await expect(page.locator('#historyList details').first()).toContainText('Rank D L1');
   s = await state(page);
   expect(s.profile.rank).toBe('C');
@@ -126,10 +127,10 @@ test('Rank 切替で教材が変わり、記録はランク付きで残る', asy
 
 test('AI フィードバック（モック）: 宣言ピースの判定が回収ボタンに先に入る', async ({ page }) => {
   await addPiece(page);
-  await page.click('#tab-prep');
+  await go(page, 'prep');
   await page.click('#prepStart');
   for (let i = 0; i < 4; i += 1) await page.click('#prepNext');
-  await page.click('#tab-history');
+  await go(page, 'history');
   await page.fill('#keyAnthropic', 'sk-ant-test-not-real');
   await page.click('#saveKeys');
 
@@ -152,7 +153,7 @@ test('AI フィードバック（モック）: 宣言ピースの判定が回収
     });
   });
 
-  await page.click('#tab-log');
+  await go(page, 'log');
   await page.fill('#aiPaste', 'Trainer: What do you do? Me: I do HR. Lately I think a lot about how people grow.');
   await page.click('#aiRun');
   await expect(page.locator('#aiResult')).toContainText('宣言したピースは言えたか');
@@ -168,11 +169,11 @@ test('AI フィードバック（モック）: 宣言ピースの判定が回収
   const s = await state(page);
   expect(s.sessions[0].ai.trainer_questions).toHaveLength(1);
   expect(s.sessions[0].declared[0].ok).toBe(true);
-  await page.click('#tab-history');
+  await go(page, 'history');
   await expect(page.locator('#monthHint')).toContainText('質問カバー率 100%');
 
   // ピースの英語化もモックで通す
-  await page.click('#tab-cards');
+  await go(page, 'cards');
   await page.fill('#pieceJa', '走るのが好き\n気持ちがいい\nだから朝走る\nあなたは走る？');
   await page.click('#pieceAI');
   await expect(page.locator('#pieceEn')).toHaveValue(/Do you run\?/);
@@ -180,10 +181,10 @@ test('AI フィードバック（モック）: 宣言ピースの判定が回収
 });
 
 test('60秒サンプルの UI と採点（モック）', async ({ page }) => {
-  await page.click('#tab-cards');
+  await go(page, 'cards');
   await expect(page.locator('#samplePrompts li')).toHaveCount(3);
   await expect(page.locator('#sampleScore')).toBeDisabled();
-  await page.click('#tab-history');
+  await go(page, 'history');
   await page.fill('#keyAnthropic', 'sk-ant-test-not-real');
   await page.click('#saveKeys');
   await page.route('https://api.anthropic.com/v1/messages', (route) => route.fulfill({
@@ -193,7 +194,7 @@ test('60秒サンプルの UI と採点（モック）', async ({ page }) => {
       best_sentence: 'I grew up in a small town.', tip_ja: '質問を1つ返す', cleaned_transcript: 'I grew up in a small town. It was quiet. I like running. I run in the morning. Lately I think about growth. It is fun.',
     }) }] }),
   }));
-  await page.click('#tab-cards');
+  await go(page, 'cards');
   await page.fill('#samplePaste', 'I grew up in a small town. It was quiet. I like running. I run in the morning. Lately I think about growth. It is fun.');
   await page.fill('#sampleSeconds', '60');
   await expect(page.locator('#sampleScore')).toBeEnabled();
@@ -204,13 +205,13 @@ test('60秒サンプルの UI と採点（モック）', async ({ page }) => {
   expect(s.samples).toHaveLength(1);
   expect(s.samples[0].wpm).toBeGreaterThan(20);
   expect(s.samples[0].complete_ratio).toBeCloseTo(0.83, 1);
-  await page.click('#tab-history');
+  await go(page, 'history');
   await expect(page.locator('#monthHint')).toContainText('自己ベスト');
   await expect(page.locator('#monthBest')).toContainText('small town');
 });
 
 test('書き出し JSON に API キーと同期トークンが入らない・古い形式も読める', async ({ page }) => {
-  await page.click('#tab-history');
+  await go(page, 'history');
   await page.fill('#keyAnthropic', 'sk-ant-test-not-real');
   await page.fill('#keyOpenai', 'sk-test-openai');
   await page.click('#saveKeys');
@@ -222,9 +223,9 @@ test('書き出し JSON に API キーと同期トークンが入らない・古
   const keys = await page.evaluate(() => JSON.parse(localStorage.getItem('bizmates-log/keys')));
   expect(keys).toMatchObject({ anthropic: 'sk-ant-test-not-real', github_pat: 'github_pat_test_not_real' });
 
-  await page.click('#tab-log');
+  await go(page, 'log');
   await page.click('#saveSession');
-  await page.click('#tab-history');
+  await go(page, 'history');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportBtn')]);
   const text = fs.readFileSync(await dl.path(), 'utf8');
   expect(text).not.toContain('sk-ant-test');
@@ -253,7 +254,7 @@ test('ダークテーマでも描画される', async ({ page }) => {
 });
 
 test('カンペ: 同期先が無ければ案内、設定後は private リポジトリから読んで端末に保存', async ({ page }) => {
-  await page.click('#tab-kanpe');
+  await go(page, 'kanpe');
   await expect(page.locator('#kanpeStatus')).toContainText('同期先が未設定');
   await expect(page.locator('#kanpeLesson option')).toHaveCount(20);
 
@@ -270,11 +271,11 @@ test('カンペ: 同期先が無ければ案内、設定後は private リポジ
     }
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{"message":"Not Found"}' });
   });
-  await page.click('#tab-history');
+  await go(page, 'history');
   await page.fill('#syncRepo', 'kuroyanyan/improve-language-data');
   await page.fill('#syncPat', 'github_pat_test_not_real');
   await page.click('#syncSave');
-  await page.click('#tab-kanpe');
+  await go(page, 'kanpe');
   await page.selectOption('#kanpeLesson', '14');
   await expect(page.locator('#kanpeBody')).toContainText('Talking About Your Workload');
   await expect(page.locator('#kanpeBody')).toContainText('今日の型');
@@ -284,16 +285,34 @@ test('カンペ: 同期先が無ければ案内、設定後は private リポジ
   // 2回目はキャッシュから（ネットワークに出ない）
   const before = hits;
   await page.reload();
-  await page.click('#tab-kanpe');
+  await go(page, 'kanpe');
   await page.selectOption('#kanpeLesson', '14');
   await expect(page.locator('#kanpeBody')).toContainText('Talking About Your Workload');
   await expect(page.locator('#kanpeStatus')).toContainText('保存済み');
   expect(hits).toBe(before);
 
   // 予習タブからも開ける
-  await page.click('#tab-prep');
+  await go(page, 'prep');
   await page.click('#prepStart');
   await page.click('#prepNext');
   await page.click('#cueBox button.ghost');
   await expect(page.locator('#view-kanpe')).toBeVisible();
+});
+
+test('☰ メニュー: 開閉と現在地、Esc と背景で閉じる', async ({ page }) => {
+  await expect(page.locator('#drawer')).toBeHidden();
+  await page.click('#menuBtn');
+  await expect(page.locator('#drawer')).toBeVisible();
+  await expect(page.locator('#menuBtn')).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#drawer')).toBeHidden();
+  await page.click('#menuBtn');
+  await page.click('#tab-kanpe');
+  await expect(page.locator('#drawer')).toBeHidden();
+  await expect(page.locator('#view-kanpe')).toBeVisible();
+  await expect(page.locator('#whereLabel')).toHaveText('カンペ');
+  await page.click('#menuBtn');
+  await expect(page.locator('#tab-kanpe')).toHaveAttribute('aria-current', 'page');
+  await page.click('#backdrop', { position: { x: 400, y: 300 } });
+  await expect(page.locator('#drawer')).toBeHidden();
 });

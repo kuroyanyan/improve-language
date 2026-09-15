@@ -1054,21 +1054,41 @@ function setupHistoryTab() {
 
 // ---------------------------------------------------------------- タブ切り替え
 
+const VIEW_LABEL = { log: '記録', prep: '5分予習', kanpe: 'カンペ', cards: '自分の話', history: '履歴' };
+
 function switchView(name) {
   for (const v of document.querySelectorAll('.view')) {
     v.hidden = v.id !== `view-${name}`;
   }
-  for (const b of document.querySelectorAll('.nav button')) {
+  for (const b of document.querySelectorAll('.drawer button[data-view]')) {
     if (b.dataset.view === name) b.setAttribute('aria-current', 'page');
     else b.removeAttribute('aria-current');
   }
+  $('whereLabel').textContent = VIEW_LABEL[name] || '';
   if (name === 'cards') refillQueue();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
 
+function setMenu(open) {
+  $('drawer').hidden = !open;
+  $('backdrop').hidden = !open;
+  $('menuBtn').setAttribute('aria-expanded', String(open));
+  document.body.classList.toggle('menu-open', open);
+  if (open) {
+    const cur = document.querySelector('.drawer button[aria-current="page"]') || document.querySelector('.drawer button[data-view]');
+    if (cur) cur.focus();
+  } else {
+    $('menuBtn').focus();
+  }
+}
+
 function setupNav() {
-  for (const b of document.querySelectorAll('.nav button')) {
-    b.addEventListener('click', () => switchView(b.dataset.view));
+  $('menuBtn').addEventListener('click', () => setMenu($('drawer').hidden));
+  $('menuClose').addEventListener('click', () => setMenu(false));
+  $('backdrop').addEventListener('click', () => setMenu(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('drawer').hidden) setMenu(false); });
+  for (const b of document.querySelectorAll('.drawer button[data-view]')) {
+    b.addEventListener('click', () => { switchView(b.dataset.view); setMenu(false); });
   }
 }
 

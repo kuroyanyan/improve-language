@@ -15,7 +15,7 @@
   --warn-bg: #f6e8da;
   --danger: #b3261e;
   --shadow: 0 1px 2px rgba(34, 48, 60, 0.06), 0 8px 24px rgba(34, 48, 60, 0.06);
-  --nav-h: 62px;
+  --nav-h: 0px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -82,7 +82,7 @@ h1, h2, h3 { font-family: "Lora", Georgia, serif; }
 .app {
   max-width: 680px;
   margin: 0 auto;
-  padding: 0 16px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
+  padding: 0 16px calc(env(safe-area-inset-bottom) + 40px);
 }
 
 .topbar {
@@ -91,10 +91,12 @@ h1, h2, h3 { font-family: "Lora", Georgia, serif; }
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 20px 0 14px;
+  padding: 16px 0 14px;
+  gap: 12px;
+  align-items: center;
 }
 
-.topbar h1 { font-size: 1.15rem; margin: 0; letter-spacing: 0.01em; }
+.topbar h1 { font-size: 1.15rem; margin: 0; letter-spacing: 0.01em; flex: 1 1 auto; }
 
 .topbar .sub {
   font-size: 0.76rem;
@@ -378,56 +380,47 @@ details.log summary .when { font-size: 0.8rem; color: var(--muted); font-weight:
 details.log .inner { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 details.log h4 { margin: 0; font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
-/* ---------- 下タブ ---------- */
+/* ---------- ☰ メニューとドロワー ---------- */
 
-.nav {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
+.menubtn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  font-size: 1.2rem; line-height: 1; padding: 6px 12px; min-height: 40px; border-radius: 9px;
 }
+.menubtn:hover { border-color: var(--accent); color: var(--accent); }
+.topbar h1 .where { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 0.86rem; font-weight: 500; color: var(--muted); margin-left: 10px; }
 
-.nav button {
-  border: none;
-  border-radius: 0;
-  background: none;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  min-height: var(--nav-h);
-  padding: 8px 2px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-}
+.backdrop { position: fixed; inset: 0; background: rgba(16, 23, 30, 0.35); z-index: 25; }
+.backdrop[hidden] { display: none; }
 
-.nav button .ico { font-size: 1.18rem; line-height: 1; }
-.nav button[aria-current="page"] { color: var(--accent); }
-.nav button .dot {
-  position: absolute;
-  transform: translate(15px, -13px);
-  min-width: 17px;
-  height: 17px;
-  border-radius: 99px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.64rem;
-  line-height: 17px;
-  padding: 0 4px;
+.drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; width: min(320px, 86vw);
+  background: var(--surface); border-right: 1px solid var(--border); box-shadow: var(--shadow);
+  z-index: 30; display: flex; flex-direction: column; gap: 4px; padding: 14px 12px 20px; overflow-y: auto;
 }
+.drawer[hidden] { display: none; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 10px; }
+.drawer-title { font-family: "Lora", Georgia, serif; font-weight: 700; font-size: 1.05rem; }
+.drawer button[data-view] {
+  position: relative; display: flex; align-items: center; gap: 12px; text-align: left;
+  border: 1px solid transparent; background: none; color: var(--ink); border-radius: 10px; padding: 10px 12px; min-height: 52px;
+}
+.drawer button[data-view]:hover { background: var(--say-bg); border-color: var(--border); }
+.drawer button[data-view][aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.drawer button[data-view] .ico { font-size: 1.25rem; line-height: 1; width: 26px; text-align: center; }
+.drawer button[data-view] .lbl { display: flex; flex-direction: column; gap: 1px; font-size: 0.98rem; }
+.drawer button[data-view] .lbl small { font-size: 0.74rem; font-weight: 500; color: var(--muted); }
+.drawer button[data-view] .dot {
+  margin-left: auto; min-width: 20px; height: 20px; border-radius: 99px; background: var(--accent); color: #fff;
+  font-size: 0.7rem; line-height: 20px; text-align: center; padding: 0 6px;
+}
+body.menu-open { overflow: hidden; }
 
 /* ---------- トースト ---------- */
 
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
   transform: translateX(-50%) translateY(8px);
   z-index: 20;
   background: var(--ink);
@@ -530,7 +523,6 @@ input[type="number"] { max-width: 140px; }
 /* ---------- PC 前提の幅、5タブ ---------- */
 .app { max-width: 760px; }
 @media (min-width: 1100px) { .app { max-width: 960px; } }
-.nav { grid-template-columns: repeat(5, 1fr); }
 details.log .inner h4 { margin-top: 6px; }
 
 /* ---------- カンペ（旧・朝プレップと同じ見た目） ---------- */
