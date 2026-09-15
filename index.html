@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Bizmates のレッスンで詰まったことと単語を30秒で記録して、次回の5分予習まで一息でつなぐ学習ログ。">
+<meta name="description" content="Bizmates のレッスンを、自分の話を英語で言えるようにする練習に変える学習ログ。30秒の記録と5分の予習、宣言したピースの回収。">
 <meta name="theme-color" content="#0e6db4">
 <title>Bizmates Log</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📗</text></svg>">
@@ -14,22 +14,26 @@
 
 <div class="app">
 
-  <div class="topbar">
-    <h1>Bizmates Log</h1>
-    <span class="sub" id="rankLine">Level 1 · Rank C</span>
-  </div>
+  <header class="topbar">
+    <button type="button" class="menubtn" id="menuBtn" aria-label="メニューを開く" aria-expanded="false" aria-controls="drawer">☰</button>
+    <h1>Bizmates Log <span class="where" id="whereLabel">記録</span></h1>
+    <div class="rankbar">
+      <select id="rankPick" class="rankpick" aria-label="Rank を切り替える" hidden></select>
+      <span class="sub" id="rankLine">Level 1</span>
+    </div>
+  </header>
 
   <!-- ============ 記録 ============ -->
   <section class="view" id="view-log" aria-labelledby="tab-log">
 
     <div class="card">
-      <h2>レッスンを録る → AI にみてもらう <span class="jp">任意・キー設定が必要</span></h2>
+      <h2>レッスンを録る → AI が記録を埋める <span class="jp">キー設定が必要。これが主線</span></h2>
       <div class="row">
         <button type="button" id="recStart">🎙 録音をはじめる</button>
         <button type="button" class="danger" id="recStop" hidden>■ 停止</button>
         <span class="badge" id="recClock" aria-live="off">0:00</span>
       </div>
-      <p class="hint" id="aiStatus">マイクで録音します。PC で受けるなら、スピーカーで音を出すとトレーナーの声も入ります。</p>
+      <p class="hint" id="aiStatus">録音か文字起こしを渡すと、詰まったこと・単語・宣言ピースの判定・聞かれた質問を自動で記録に入れます。PC で受けるなら、スピーカーで音を出すとトレーナーの声も入ります。</p>
       <label class="field">または、Notion などの文字起こしを貼り付け
         <textarea id="aiPaste" placeholder="日英が混ざった文字起こしのままで大丈夫。Claude が文脈から整理します。"></textarea>
       </label>
@@ -47,43 +51,66 @@
         <span class="badge" id="logLessonBadge">Rank C</span>
       </div>
       <p class="hint" id="logLessonHint"></p>
-      <div class="seg" role="group" aria-label="today の手応え">
+      <div class="seg" role="group" aria-label="今日の手応え">
         <button type="button" data-rating="3" aria-pressed="false">◎ 言えた</button>
         <button type="button" data-rating="2" aria-pressed="false">○ まあまあ</button>
         <button type="button" data-rating="1" aria-pressed="false">△ きつかった</button>
       </div>
+      <p class="hint">教材のあと、フリートークに使えた時間</p>
+      <div class="seg five" role="group" aria-label="フリートークの分数" id="talkSeg"></div>
     </div>
 
     <div class="card">
-      <h2>詰まったこと <span class="jp">言いたかったのに出てこなかった</span></h2>
-      <label class="field">日本語で言いたかったこと
-        <input type="text" id="stuckJa" placeholder="例: その件は来週までに終わらせます" autocomplete="off">
-      </label>
-      <label class="field">正しい言い方 <span>（トレーナーに直されたら／任意）</span>
-        <input type="text" id="stuckFix" placeholder="例: I'll get it done by next week." autocomplete="off">
-      </label>
-      <button type="button" id="stuckAdd">＋ 追加する</button>
+      <h2>宣言したピース <span class="jp">フリートークで、見ずに言えた？</span></h2>
+      <div class="declared" id="declaredBox"></div>
+      <div class="row" id="declareExtraRow" hidden>
+        <select id="declareExtra" aria-label="ほかに言えたピース"></select>
+      </div>
+      <p class="hint">「見ずに言えた」が別の日に3回で卒業。読んで言えたは「まだ」。AI フィードバックを使うと先に入ります。</p>
+    </div>
+
+    <div class="card">
+      <h2>記録に入るもの <span class="jp">AI が入れたもの。要らなければ ✕</span></h2>
       <ul class="items" id="stuckList"></ul>
-      <p class="hint">「正しい言い方」まで入れると単語カードになって、次の予習とレビューに出てきます。空でも予習の1ステップ目には出ます。</p>
-    </div>
-
-    <div class="card">
-      <h2>覚えたい単語・フレーズ <span class="jp">レッスン中に出たもの</span></h2>
-      <label class="field">英語
-        <input type="text" id="wordEn" placeholder="例: get it done by" autocomplete="off">
-      </label>
-      <label class="field">意味
-        <input type="text" id="wordJa" placeholder="例: 〜までに終わらせる" autocomplete="off">
-      </label>
-      <button type="button" id="wordAdd">＋ 追加する</button>
       <ul class="items" id="wordList"></ul>
+      <p class="hint" id="saveHint"></p>
+      <details class="log">
+        <summary>手で足す <span class="when">任意。AI を使わない日だけ</span></summary>
+        <div class="inner">
+          <h4>詰まったこと</h4>
+          <label class="field">日本語で言いたかったこと
+            <input type="text" id="stuckJa" placeholder="例: その件は来週までに終わらせます" autocomplete="off">
+          </label>
+          <label class="field">正しい言い方 <span>（任意）</span>
+            <input type="text" id="stuckFix" placeholder="例: I'll get it done by next week." autocomplete="off">
+          </label>
+          <button type="button" id="stuckAdd">＋ 追加する</button>
+          <h4>覚えたい単語・フレーズ</h4>
+          <label class="field">英語
+            <input type="text" id="wordEn" placeholder="例: get it done by" autocomplete="off">
+          </label>
+          <label class="field">意味
+            <input type="text" id="wordJa" placeholder="例: 〜までに終わらせる" autocomplete="off">
+          </label>
+          <button type="button" id="wordAdd">＋ 追加する</button>
+        </div>
+      </details>
     </div>
 
     <div class="card">
-      <h2>ひとことメモ <span class="jp">任意</span></h2>
-      <textarea id="memo" placeholder="次はもっとゆっくり話す。Act で詰まったら In order to から入る。"></textarea>
+      <h2>保存 <span class="jp">メモは任意</span></h2>
+      <textarea id="memo" placeholder="次はもっとゆっくり話す。フリートークで質問を1つ返す。"></textarea>
       <button type="button" class="primary" id="saveSession">このレッスンを記録する</button>
       <p class="hint" id="saveHint"></p>
+    </div>
+
+    <div class="card">
+      <h2>レッスン外で英語を使った <span class="jp">実戦。1行だけ残す</span></h2>
+      <label class="field">いつ・誰と・何を言えたか
+        <input type="text" id="realText" placeholder="例: 面接の冒頭で自己紹介を英語でした。相手が笑った" autocomplete="off">
+      </label>
+      <button type="button" id="realSave">🌍 実戦として記録する</button>
+      <p class="hint">これが北極星。レッスンは練習、本番はここ。</p>
     </div>
 
   </section>
@@ -122,11 +149,80 @@
 
   </section>
 
-  <!-- ============ 単語 ============ -->
+  <!-- ============ カンペ ============ -->
+  <section class="view" id="view-kanpe" hidden aria-labelledby="tab-kanpe">
+
+    <div class="card">
+      <h2>カンペ <span class="jp">レッスン前に開いて、そのまま読む</span></h2>
+      <div class="lessonpick">
+        <select id="kanpeLesson" aria-label="カンペのレッスンを選ぶ"></select>
+        <span class="badge" id="kanpeRankBadge">Rank C</span>
+      </div>
+      <div class="row tight">
+        <button type="button" class="ghost" id="kanpePrev">← 前</button>
+        <button type="button" class="ghost" id="kanpeNext">次 →</button>
+        <button type="button" class="ghost" id="kanpeRefresh">更新</button>
+      </div>
+      <p class="hint" id="kanpeStatus"></p>
+    </div>
+
+    <div class="kanpe" id="kanpeBody"></div>
+
+  </section>
+
+  <!-- ============ 自分の話 ============ -->
   <section class="view" id="view-cards" hidden aria-labelledby="tab-cards">
 
     <div class="card">
-      <h2>今日のレビュー <span class="jp">日本語を見て英語が出るか</span></h2>
+      <h2>自分の話ピース <span class="jp">3文＋投げ返し1問。短く、簡単な言葉で</span></h2>
+      <p class="hint" id="pieceStatus"></p>
+      <label class="field">種類
+        <select id="pieceCat" aria-label="ピースの種類"></select>
+      </label>
+      <label class="field">日本語で（事実 → 気持ちか考え → 今とのつながり → 相手への質問）
+        <textarea id="pieceJa" placeholder="例:&#10;最近、人はどうやって成長するかをよく考える&#10;安心できて、仕事が難しいときに人は伸びる&#10;だからそういうチームを作ろうとしている&#10;あなたが一番成長したのは何のとき？"></textarea>
+      </label>
+      <button type="button" id="pieceAI">英語にする（簡単な言葉で）</button>
+      <label class="field">英語（1行1文・12語以下・最後は質問）
+        <textarea id="pieceEn" placeholder="Lately, I think a lot about how people grow.&#10;People grow when they feel safe and the work is hard.&#10;So I try to make that kind of team.&#10;What made you grow the most?"></textarea>
+      </label>
+      <p class="hint" id="pieceNote"></p>
+      <div class="row">
+        <button type="button" class="primary" id="pieceSave">ピースを保存</button>
+        <button type="button" class="ghost" id="pieceCancel" hidden>やめる</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>ピース一覧 <span class="jp">練習中 → 卒業</span></h2>
+      <ul class="items" id="pieceList"></ul>
+    </div>
+
+    <div class="card">
+      <h2>60秒サンプル <span class="jp">月1回・毎回同じ3問・自己ベスト</span></h2>
+      <p class="hint" id="sampleStatus"></p>
+      <ol class="prompts" id="samplePrompts"></ol>
+      <div class="sampletimer" id="sampleTimer">1:00</div>
+      <div class="row">
+        <button type="button" id="sampleRec">🎙 60秒 録る</button>
+        <button type="button" class="danger" id="sampleStop" hidden>■ 止める</button>
+      </div>
+      <label class="field">または、文字起こしを貼り付け
+        <textarea id="samplePaste" placeholder="自分の声だけの文字起こし"></textarea>
+      </label>
+      <label class="field">話した秒数
+        <input type="number" id="sampleSeconds" value="60" min="10" max="180" inputmode="numeric">
+      </label>
+      <div class="row">
+        <button type="button" class="primary" id="sampleScore" disabled>採点する</button>
+      </div>
+      <p class="hint" id="sampleNote">語数/分と固定ルーブリックの Level で記録します。合否はありません。</p>
+      <div id="sampleResult" class="airesult" hidden></div>
+      <ul class="items" id="sampleList"></ul>
+    </div>
+
+    <div class="card">
+      <h2>単語カード <span class="jp">今日ぶん・日本語を見て英語が出るか</span></h2>
       <p class="hint" id="cardsStatus"></p>
       <div class="flash" id="flash">
         <p class="empty" id="flashEmpty">今日ぶんのカードはありません。<br>レッスンを記録すると、詰まったことと単語がカードになります。</p>
@@ -156,13 +252,20 @@
   <section class="view" id="view-history" hidden aria-labelledby="tab-history">
 
     <div class="card">
-      <h2>記録 <span class="jp">積み上がったもの</span></h2>
+      <h2>今週 <span class="jp">器が回っているか</span></h2>
       <div class="stats">
-        <div class="stat"><span class="n" id="stSessions">0</span><span class="k">レッスン</span></div>
-        <div class="stat"><span class="n" id="stCards">0</span><span class="k">カード</span></div>
-        <div class="stat"><span class="n" id="stStreak">0</span><span class="k">連続日数</span></div>
+        <div class="stat"><span class="n" id="stWeek">0/7</span><span class="k">今週の日数</span></div>
+        <div class="stat"><span class="n" id="stPieces">0</span><span class="k">言えるピース</span></div>
+        <div class="stat"><span class="n" id="stReal">0</span><span class="k">実戦（今月）</span></div>
       </div>
       <p class="hint" id="historyHint"></p>
+    </div>
+
+    <div class="card">
+      <h2>今月の記録証 <span class="jp">手元に残るもの</span></h2>
+      <div class="stats four" id="monthStats"></div>
+      <p class="hint" id="monthHint"></p>
+      <p class="cue" id="monthBest" hidden></p>
     </div>
 
     <div class="card">
@@ -172,7 +275,7 @@
 
     <div class="card">
       <h2>AI 設定 <span class="jp">キーはこの端末にだけ保存・書き出しに含まれない</span></h2>
-      <label class="field">Anthropic API キー（フィードバック用）
+      <label class="field">Anthropic API キー（フィードバック・ピースの英語化・採点）
         <input type="password" id="keyAnthropic" placeholder="sk-ant-…" autocomplete="off">
       </label>
       <label class="field">OpenAI API キー（音声の文字起こし用・貼り付け運用なら不要）
@@ -183,8 +286,24 @@
     </div>
 
     <div class="card">
+      <h2>データ同期 <span class="jp">任意・集計だけを private リポジトリへ</span></h2>
+      <label class="field">GitHub リポジトリ（owner/name）
+        <input type="text" id="syncRepo" placeholder="kuroyanyan/improve-language-data" autocomplete="off">
+      </label>
+      <label class="field">Fine-grained トークン（そのリポジトリの Contents: Read and write だけ）
+        <input type="password" id="syncPat" placeholder="github_pat_…" autocomplete="off">
+      </label>
+      <div class="row">
+        <button type="button" id="syncSave">同期先を保存</button>
+        <button type="button" class="primary" id="syncNow">今すぐ同期</button>
+      </div>
+      <p class="hint" id="syncStatus"></p>
+      <p class="hint">送るのは週ごとの集計・ピースの英文と回数・サンプルの数値・実戦の1行だけ。文字起こし・音声・メモ・キーは送りません。週1の改善ループがこれを読みます。</p>
+    </div>
+
+    <div class="card">
       <h2>データ <span class="jp">この端末のブラウザに保存されています</span></h2>
-      <p class="hint">記録はサーバーに送られません。端末を変えるときや、念のためのバックアップは書き出しから。</p>
+      <p class="hint">記録はサーバーに送られません（同期を設定した場合の集計を除く）。端末を変えるときや、念のためのバックアップは書き出しから。</p>
       <div class="row">
         <button type="button" id="exportBtn">JSON を書き出す</button>
         <button type="button" id="importBtn">読み込む</button>
@@ -198,17 +317,23 @@
   </section>
 
   <footer class="foot">
-    Bizmates Level 1 · Rank C（Lesson 1–20）の Key Phrases を収録<br>
+    <span id="footLine">Bizmates Level 1 の Key Phrases を収録</span><br>
     記録はこの端末の localStorage にのみ保存されます
   </footer>
 
 </div>
 
-<nav class="nav" aria-label="画面切り替え">
-  <button type="button" id="tab-log" data-view="log" aria-current="page"><span class="ico">📝</span>記録</button>
-  <button type="button" id="tab-prep" data-view="prep"><span class="ico">⏱</span>5分予習</button>
-  <button type="button" id="tab-cards" data-view="cards"><span class="ico">🗂</span>単語<span class="dot" id="dueDot" hidden>0</span></button>
-  <button type="button" id="tab-history" data-view="history"><span class="ico">📈</span>履歴</button>
+<div class="backdrop" id="backdrop" hidden></div>
+<nav class="drawer" id="drawer" aria-label="画面切り替え" hidden>
+  <div class="drawer-head">
+    <span class="drawer-title">Bizmates Log</span>
+    <button type="button" class="icon" id="menuClose" aria-label="メニューを閉じる">✕</button>
+  </div>
+  <button type="button" id="tab-log" data-view="log" aria-current="page"><span class="ico">📝</span><span class="lbl">記録<small>レッスン後30秒。録音 → AI が埋める</small></span></button>
+  <button type="button" id="tab-prep" data-view="prep"><span class="ico">⏱</span><span class="lbl">5分予習<small>次のレッスンの前に</small></span></button>
+  <button type="button" id="tab-kanpe" data-view="kanpe"><span class="ico">📖</span><span class="lbl">カンペ<small>レッスン中に開いておく</small></span></button>
+  <button type="button" id="tab-cards" data-view="cards"><span class="ico">🗣</span><span class="lbl">自分の話<small>ピース・60秒サンプル・単語カード</small></span><span class="dot" id="dueDot" hidden>0</span></button>
+  <button type="button" id="tab-history" data-view="history"><span class="ico">📈</span><span class="lbl">履歴<small>今週・記録証・設定・同期</small></span></button>
 </nav>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

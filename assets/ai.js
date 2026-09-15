@@ -7,6 +7,17 @@ const CLAUDE_MODEL = 'claude-opus-5';
 const TRANSCRIBE_MODEL = 'gpt-4o-transcribe';
 const MAX_UPLOAD_BYTES = 24 * 1024 * 1024;
 
+// 「大山スタイル」— 簡単な文法と広い意味の動詞で、聞き手の負荷を下げる英語。
+// ピースの英語化・採点・FB の言い換えすべてに、この縛りをかける。
+export const OYAMA_STYLE = [
+  'Style rule ("simple spoken English"): use only very common words (the kind in the first 1,500 words of English).',
+  'Prefer broad verbs like do, get, make, have, take, go, see, think, feel, like, want.',
+  'One idea per sentence. Keep every sentence 12 words or fewer. Avoid relative clauses when you can.',
+  'Contractions are fine. If a rarer word is really needed, keep it but flag it.',
+].join(' ');
+
+const DEFAULT_KEYS = { anthropic: '', openai: '', github_repo: 'kuroyanyan/improve-language-data', github_pat: '' };
+
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -19,50 +30,73 @@ const el = (tag, cls, text) => {
 
 export function loadKeys() {
   try {
-    return { anthropic: '', openai: '', ...(JSON.parse(localStorage.getItem(KEYS_KEY) || '{}')) };
+    return { ...DEFAULT_KEYS, ...(JSON.parse(localStorage.getItem(KEYS_KEY) || '{}')) };
   } catch {
-    return { anthropic: '', openai: '' };
+    return { ...DEFAULT_KEYS };
   }
 }
 
+/** 渡したキーだけ上書きし、他は保持する（AI キーと同期設定が別々に保存できるように）。 */
 export function saveKeys(keys) {
-  localStorage.setItem(KEYS_KEY, JSON.stringify({ anthropic: keys.anthropic || '', openai: keys.openai || '' }));
+  const cur = loadKeys();
+  const next = { ...cur };
+  for (const k of Object.keys(DEFAULT_KEYS)) {
+    if (k in keys) next[k] = keys[k] || '';
+  }
+  localStorage.setItem(KEYS_KEY, JSON.stringify(next));
 }
 
 // ---------------------------------------------------------------- recorder
-
-const rec = { recorder: null, chunks: [], stream: null, startedAt: 0, timer: null, blob: null, mime: '' };
 
 function pickMime() {
   const cands = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
   return cands.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
 }
 
+/** 録音ハンドル。start() → stop() で Blob。レッスン録音と60秒サンプルの両方で使う。 */
+export function createRecorder() {
+  const h = { recorder: null, chunks: [], stream: null, mime: '' };
+  return {
+    async start() {
+      if (!navigator.mediaDevices || !window.MediaRecorder) throw new Error('この端末のブラウザは録音に対応していません');
+      h.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      h.mime = pickMime();
+      h.chunks = [];
+      // 25分でも 6MB 前後に収まるよう低めのビットレートにする
+      h.recorder = new MediaRecorder(h.stream, h.mime ? { mimeType: h.mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
+      h.recorder.addEventListener('dataavailable', (e) => { if (e.data && e.data.size) h.chunks.push(e.data); });
+      h.recorder.start(5000);
+    },
+    stop() {
+      return new Promise((resolve) => {
+        if (!h.recorder) { resolve(null); return; }
+        h.recorder.addEventListener('stop', () => {
+          const blob = new Blob(h.chunks, { type: h.recorder.mimeType || h.mime || 'audio/webm' });
+          if (h.stream) h.stream.getTracks().forEach((t) => t.stop());
+          h.recorder = null;
+          h.stream = null;
+          resolve(blob);
+        }, { once: true });
+        h.recorder.stop();
+      });
+    },
+  };
+}
+
+const rec = { handle: null, startedAt: 0, timer: null, blob: null };
+
 async function startRecording() {
-  if (!navigator.mediaDevices || !window.MediaRecorder) throw new Error('この端末のブラウザは録音に対応していません');
-  rec.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-  rec.mime = pickMime();
-  rec.chunks = [];
+  rec.handle = createRecorder();
+  await rec.handle.start();
   rec.blob = null;
-  // 25分でも 6MB 前後に収まるよう低めのビットレートにする
-  rec.recorder = new MediaRecorder(rec.stream, rec.mime ? { mimeType: rec.mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
-  rec.recorder.addEventListener('dataavailable', (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); });
-  rec.recorder.start(5000);
   rec.startedAt = Date.now();
 }
 
-function stopRecording() {
-  return new Promise((resolve) => {
-    if (!rec.recorder) { resolve(null); return; }
-    rec.recorder.addEventListener('stop', () => {
-      rec.blob = new Blob(rec.chunks, { type: rec.recorder.mimeType || rec.mime || 'audio/webm' });
-      if (rec.stream) rec.stream.getTracks().forEach((t) => t.stop());
-      rec.recorder = null;
-      rec.stream = null;
-      resolve(rec.blob);
-    }, { once: true });
-    rec.recorder.stop();
-  });
+async function stopRecording() {
+  if (!rec.handle) return null;
+  rec.blob = await rec.handle.stop();
+  rec.handle = null;
+  return rec.blob;
 }
 
 function fmt(ms) {
@@ -72,19 +106,17 @@ function fmt(ms) {
 
 // ---------------------------------------------------------------- transcription (OpenAI)
 
-async function transcribe(blob, ctx, key) {
+/** 音声 Blob を文字起こしする。promptText は ASR に渡す文脈（英語中心・語彙など）。 */
+export async function transcribeBlob(blob, promptText, key) {
   if (!key) throw new Error('OpenAI の API キーが未設定です（履歴タブ → AI設定）');
+  if (!blob) throw new Error('音声がありません');
   if (blob.size > MAX_UPLOAD_BYTES) throw new Error(`音声が大きすぎます（${(blob.size / 1048576).toFixed(1)}MB）。25MB 以下にしてください`);
   const ext = blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm';
   const form = new FormData();
-  form.append('file', blob, `lesson.${ext}`);
+  form.append('file', blob, `audio.${ext}`);
   form.append('model', TRANSCRIBE_MODEL);
   form.append('response_format', 'json');
-  // ASR に文脈を渡す。英語中心・日本語が混ざる・レッスンの語彙、を先に教えておくと混在の誤認識が減る
-  form.append('prompt',
-    `Online English lesson (Bizmates). A Japanese learner practices business English with a trainer. ` +
-    `Mostly English; the learner occasionally speaks Japanese. Topic: ${ctx.topic}. ` +
-    `Key phrases: ${ctx.keyPhrases.join('; ')}.`);
+  form.append('prompt', promptText);
 
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
@@ -98,6 +130,14 @@ async function transcribe(blob, ctx, key) {
   const data = await res.json();
   if (!data.text) throw new Error('文字起こし結果が空でした');
   return data.text;
+}
+
+function transcribe(blob, ctx, key) {
+  // ASR に文脈を渡す。英語中心・日本語が混ざる・レッスンの語彙、を先に教えておくと混在の誤認識が減る
+  return transcribeBlob(blob,
+    `Online English lesson (Bizmates). A Japanese learner practices business English with a trainer. ` +
+    `Mostly English; the learner occasionally speaks Japanese. Topic: ${ctx.topic}. ` +
+    `Key phrases: ${ctx.keyPhrases.join('; ')}.`, key);
 }
 
 // ---------------------------------------------------------------- feedback (Claude)
@@ -161,13 +201,44 @@ const FEEDBACK_SCHEMA = {
         additionalProperties: false,
       },
     },
+    piece_use: {
+      type: 'array',
+      description: '学習者が予習で宣言した「自分の話」ピースを、見ずに言えたか。宣言が無ければ空。',
+      items: {
+        type: 'object',
+        properties: {
+          piece: { type: 'string', description: '宣言ピースの最初の1文（渡されたものをそのまま）' },
+          used: { type: 'boolean', description: 'そのピースの内容をおおむね言えていれば true' },
+          how_ja: { type: 'string', description: '一言（日本語）。どこまで言えたか、どこで止まったか' },
+        },
+        required: ['piece', 'used', 'how_ja'],
+        additionalProperties: false,
+      },
+    },
+    trainer_questions: {
+      type: 'array',
+      description: 'トレーナーが学習者に聞いた質問（自己紹介・意見・経験を尋ねるもの）。多くても8個。',
+      items: {
+        type: 'object',
+        properties: {
+          q_en: { type: 'string' },
+          q_ja: { type: 'string' },
+          covered: { type: 'boolean', description: '準備済みの自分の話（ピース）で、止まらずに答えられていれば true' },
+        },
+        required: ['q_en', 'q_ja', 'covered'],
+        additionalProperties: false,
+      },
+    },
+    trainer_question_count: { type: 'integer', description: 'トレーナーが学習者に投げた質問の総数' },
+    learner_question_count: { type: 'integer', description: '学習者がトレーナーに投げ返した質問の総数' },
     next_focus_ja: { type: 'string', description: '次回いちばん意識すること、1つだけ（日本語）' },
     cleaned_transcript: {
       type: 'string',
       description: '話者（Trainer / Me）を分け、日英の誤認識を文脈から直した文字起こし。自信がない箇所は [?] を付ける。',
     },
   },
-  required: ['summary_ja', 'good', 'corrections', 'stucks', 'words', 'key_phrase_use', 'next_focus_ja', 'cleaned_transcript'],
+  required: ['summary_ja', 'good', 'corrections', 'stucks', 'words', 'key_phrase_use', 'piece_use', 'trainer_questions',
+    'trainer_question_count', 'learner_question_count', 'next_focus_ja', 'cleaned_transcript'],
   additionalProperties: false,
 };
 
@@ -183,24 +254,23 @@ function systemPrompt(profile) {
     'Where you cannot tell, keep it short and mark [?] rather than inventing content.',
     '',
     'Keep every suggested English sentence extremely simple and short (Level 1 learner).',
+    OYAMA_STYLE,
+    'The learner also prepares "pieces": short self-introduction units (3 sentences + 1 question back).',
+    'Count questions carefully: trainer_question_count = questions the trainer asked the learner; learner_question_count = questions the learner asked back.',
     'Write Japanese explanations plainly. Never use the abbreviation "JTC".',
     profile ? `Learner facts you may rely on: ${profile}` : '',
   ].filter(Boolean).join('\n');
 }
 
-async function getFeedback(transcript, ctx, key) {
+/** Claude を構造化出力で呼ぶ共通関数。schema は JSON Schema（object）。 */
+export async function callClaude({ system, user, schema, key, maxTokens = 4000 }) {
   if (!key) throw new Error('Anthropic の API キーが未設定です（履歴タブ → AI設定）');
   const body = {
     model: CLAUDE_MODEL,
-    max_tokens: 16000,
-    system: systemPrompt(ctx.profile),
-    messages: [{
-      role: 'user',
-      content:
-        `Lesson ${ctx.lesson}: ${ctx.topic}\nKey phrases: ${ctx.keyPhrases.join(' / ')}\n\n` +
-        `Raw transcript (ASR, unlabeled speakers, JA/EN mixed):\n"""\n${transcript}\n"""`,
-    }],
-    output_config: { format: { type: 'json_schema', schema: FEEDBACK_SCHEMA } },
+    max_tokens: maxTokens,
+    system,
+    messages: [{ role: 'user', content: user }],
+    output_config: { format: { type: 'json_schema', schema } },
     // 安全分類で止まった場合にサーバー側で別モデルへ引き継ぐ
     fallbacks: 'default',
   };
@@ -221,13 +291,24 @@ async function getFeedback(transcript, ctx, key) {
     throw new Error(`Claude の呼び出しに失敗（${res.status}）${t.slice(0, 200)}`);
   }
   const msg = await res.json();
-  if (msg.stop_reason === 'refusal') throw new Error('フィードバックを生成できませんでした（refusal）');
+  if (msg.stop_reason === 'refusal') throw new Error('生成できませんでした（refusal）');
   const text = (msg.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error('フィードバックの形式が読めませんでした');
+    throw new Error('応答の形式が読めませんでした');
   }
+}
+
+function getFeedback(transcript, ctx, key) {
+  const declared = (ctx.declaredPieces || []).map((p) => `- ${p.en.replace(/\n/g, ' / ')}`).join('\n');
+  const all = (ctx.pieces || []).map((p) => `- ${p.en.replace(/\n/g, ' / ')}`).join('\n');
+  const user =
+    `Lesson ${ctx.lesson}: ${ctx.topic}\nKey phrases: ${ctx.keyPhrases.join(' / ')}\n\n` +
+    (declared ? `Pieces the learner declared to say in this lesson:\n${declared}\n\n` : 'Pieces declared for this lesson: none\n\n') +
+    (all ? `All prepared pieces (for judging "covered"):\n${all}\n\n` : '') +
+    `Raw transcript (ASR, unlabeled speakers, JA/EN mixed):\n"""\n${transcript}\n"""`;
+  return callClaude({ system: systemPrompt(ctx.profile), user, schema: FEEDBACK_SCHEMA, key, maxTokens: 16000 });
 }
 
 // ---------------------------------------------------------------- UI
@@ -299,9 +380,11 @@ export function setupAI(hooks) {
       }
       say('Claude がフィードバックを作成中…（1分ほど）');
       const fb = await getFeedback(transcript, ctx, keys.anthropic);
-      renderFeedback(fb, hooks);
+      if (hooks.autoFill) hooks.autoFill(fb);
+      renderFeedback(fb, hooks, { readOnly: !!hooks.autoFill });
       hooks.setPendingAI({ ...fb, raw_transcript_chars: transcript.length, model: CLAUDE_MODEL, at: new Date().toISOString() });
-      say('できました。使うものを「＋」で記録に入れてください');
+      if (hooks.onPieceUse && fb.piece_use && fb.piece_use.length) hooks.onPieceUse(fb.piece_use, ctx.declaredPieces || []);
+      say(hooks.autoFill ? 'できました。詰まり・単語は下の「記録に入るもの」に入れました。要らないものは ✕ で外して保存' : 'できました。使うものを「＋」で記録に入れてください');
       hooks.toast('AI フィードバック完了');
     } catch (e) {
       say(e.message);
@@ -346,7 +429,7 @@ export function renderFeedback(fb, hooks, { readOnly = false } = {}) {
   }
 
   if (fb.stucks && fb.stucks.length) {
-    box.appendChild(section('詰まっていた箇所 → 記録へ'));
+    box.appendChild(section(readOnly ? '詰まっていた箇所（記録に入れました）' : '詰まっていた箇所 → 記録へ'));
     const ul = el('ul', 'items');
     for (const s of fb.stucks) {
       ul.appendChild(pairRow(s.ja, s.en, readOnly ? null : () => hooks.addStuck({ ja: s.ja, fix: s.en })));
@@ -364,12 +447,33 @@ export function renderFeedback(fb, hooks, { readOnly = false } = {}) {
   }
 
   if (fb.words && fb.words.length) {
-    box.appendChild(section('覚える語・フレーズ → 記録へ'));
+    box.appendChild(section(readOnly ? '覚える語・フレーズ（記録に入れました）' : '覚える語・フレーズ → 記録へ'));
     const ul = el('ul', 'items');
     for (const w of fb.words) {
       ul.appendChild(pairRow(w.en, w.ja, readOnly ? null : () => hooks.addWord({ en: w.en, ja: w.ja })));
     }
     box.appendChild(ul);
+  }
+
+  if (fb.piece_use && fb.piece_use.length) {
+    box.appendChild(section('宣言したピースは言えたか'));
+    const ul = el('ul', 'items');
+    for (const p of fb.piece_use) {
+      ul.appendChild(pairRow(`${p.used ? '✓' : '△'} ${p.piece}`, p.how_ja));
+    }
+    box.appendChild(ul);
+  }
+
+  if (fb.trainer_questions && fb.trainer_questions.length) {
+    box.appendChild(section('聞かれた質問 → 準備済みで答えられたか'));
+    const ul = el('ul', 'items');
+    for (const q of fb.trainer_questions) {
+      ul.appendChild(pairRow(`${q.covered ? '✓' : '△'} ${q.q_en}`, q.q_ja));
+    }
+    box.appendChild(ul);
+  }
+  if (typeof fb.trainer_question_count === 'number' || typeof fb.learner_question_count === 'number') {
+    box.appendChild(el('p', 'hint', `質問の往復: あなたから ${fb.learner_question_count ?? 0} 回 / トレーナーから ${fb.trainer_question_count ?? 0} 回`));
   }
 
   if (fb.key_phrase_use && fb.key_phrase_use.length) {
