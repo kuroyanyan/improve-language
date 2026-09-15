@@ -511,7 +511,7 @@ ul.items li.piece .col { display: flex; flex-direction: column; gap: 6px; flex: 
 
 .stats.four { grid-template-columns: repeat(4, 1fr); }
 .stats.four .stat .n { font-size: 1.3rem; }
-.stats.four .stat .k { font-size: 0.66rem; }
+.stats.four .stat .k { font-size: 0.62rem; letter-spacing: 0; white-space: nowrap; }
 
 .sampletimer {
   font-family: "Lora", Georgia, serif; font-size: 2.6rem; font-weight: 700; text-align: center;

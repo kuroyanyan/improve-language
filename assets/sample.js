@@ -67,7 +67,8 @@ function daysBetween(a, b) {
 }
 
 function paintTimer(left) {
-  $('sampleTimer').textContent = `0:${String(Math.max(0, Math.ceil(left))).padStart(2, '0')}`;
+  const s = Math.max(0, Math.ceil(left));
+  $('sampleTimer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 function setRunButtons() {

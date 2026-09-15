@@ -871,7 +871,7 @@ function renderMonthCard() {
   const stats = $('monthStats');
   stats.replaceChildren();
   const items = [
-    [declared.length ? `${said}/${declared.length}` : '–', '言えた／宣言'],
+    [declared.length ? `${said}/${declared.length}` : '–', '言えた/宣言'],
     [String(graduated), '卒業ピース'],
     [String(real), '実戦'],
     [String(talk), 'フリートーク分'],
