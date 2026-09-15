@@ -140,6 +140,20 @@ export async function pushSnapshot(snapshot, cfg) {
   await putFile(cfg, 'latest.json', text, `latest ${snapshot.date}`);
 }
 
+
+/** private リポジトリのファイルを1つ読む（Contents API、UTF-8 テキスト）。 */
+export async function fetchRepoFile(path) {
+  const cfg = syncConfig();
+  if (!syncConfigured()) throw new Error('同期先が未設定です');
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${path}`, { headers: headers(cfg.pat) });
+  if (res.status === 404) throw new Error(`まだありません: ${path}`);
+  if (!res.ok) throw new Error(`GitHub 読み取りに失敗（${res.status}）`);
+  const j = await res.json();
+  const bin = atob((j.content || '').replace(/\n/g, ''));
+  const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 // ---------------------------------------------------------------- 実行
 
 export function syncConfig() {

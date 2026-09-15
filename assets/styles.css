@@ -526,3 +526,64 @@ input[type="number"] { max-width: 140px; }
   .stats.four { grid-template-columns: repeat(2, 1fr); }
   .seg.five { grid-template-columns: repeat(5, 1fr); }
 }
+
+/* ---------- PC 前提の幅、5タブ ---------- */
+.app { max-width: 760px; }
+@media (min-width: 1100px) { .app { max-width: 960px; } }
+.nav { grid-template-columns: repeat(5, 1fr); }
+details.log .inner h4 { margin-top: 6px; }
+
+/* ---------- カンペ（旧・朝プレップと同じ見た目） ---------- */
+.kanpe { display: flex; flex-direction: column; gap: 14px; }
+.kanpe .common { display: none; }
+.kanpe .lesson-head { border-top: 2px solid var(--accent); padding-top: 12px; display: flex; flex-direction: column; gap: 3px; }
+.kanpe .lesson-head.ch { border-top-color: var(--warn-ink); }
+.kanpe .lesson-num { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0; }
+.kanpe .lesson-head.ch .lesson-num { color: var(--warn-ink); }
+.kanpe .lesson-head h2 { font-family: "Lora", Georgia, serif; font-size: 1.32rem; line-height: 1.3; margin: 0; }
+.kanpe .lesson-head .sub { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.kanpe section.card { gap: 12px; }
+.kanpe .card > h3 {
+  font-family: "Lora", Georgia, serif; font-size: 0.95rem; letter-spacing: 0.16em; text-transform: uppercase;
+  margin: 0; color: var(--accent); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.kanpe .card > h3 .jp { font-family: "Zen Kaku Gothic New", sans-serif; letter-spacing: 0; text-transform: none; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+.kanpe .chip { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 0.76rem; font-weight: 700; white-space: nowrap; }
+.kanpe .chip.rule { color: var(--warn-ink); background: var(--warn-bg); }
+.kanpe .chip.real { color: var(--accent); background: var(--accent-soft); }
+.kanpe .chip.wrap { color: var(--ok-ink); background: var(--ok-bg); }
+.kanpe .flow { display: flex; flex-direction: column; gap: 10px; }
+.kanpe .flow .step { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; padding: 0; border: none; background: none; }
+.kanpe .flow .step .chip { justify-self: start; margin-top: 2px; }
+.kanpe .flow .step p { margin: 0; }
+.kanpe .flow .en { font-weight: 700; }
+.kanpe .flow .note { color: var(--muted); font-size: 0.84rem; }
+.kanpe .say { background: var(--say-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.kanpe .say .label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; color: var(--ok-ink); text-transform: uppercase; display: block; margin-bottom: 4px; }
+.kanpe .say p { margin: 0 0 8px; font-size: 1.04rem; line-height: 1.75; }
+.kanpe .say p:last-child { margin-bottom: 0; }
+.kanpe .say b, .kanpe .flow b, .kanpe .kp b, .kanpe .qa b, .kanpe .mini b { color: var(--accent); }
+.kanpe .say p.tr { font-size: 0.86rem; line-height: 1.6; color: var(--muted); font-weight: 400; margin: -6px 0 10px; }
+.kanpe .say p.tr:last-child { margin-bottom: 0; }
+.kanpe ul.kp { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.kanpe ul.kp li { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.kanpe ul.kp .en { font-weight: 700; font-size: 1.02rem; color: var(--accent); }
+.kanpe ul.kp .jp { color: var(--muted); font-size: 0.86rem; }
+.kanpe .persona { font-size: 0.85rem; color: var(--muted); margin: 0; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.kanpe .persona strong { color: var(--ink); font-size: 0.92rem; }
+.kanpe ol.qa { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 11px; }
+.kanpe ol.qa .q { font-weight: 700; }
+.kanpe ol.qa .q .jp { font-weight: 500; color: var(--muted); font-size: 0.84rem; }
+.kanpe ol.qa p { margin: 2px 0 0; }
+.kanpe ol.qa p.tr { font-size: 0.83rem; color: var(--muted); font-weight: 400; margin: 1px 0 0; }
+.kanpe .blank { border-bottom: 2px dotted var(--accent); font-weight: 700; padding: 0 2px; }
+.kanpe table.mini { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+.kanpe table.mini td { padding: 6px 8px 6px 0; vertical-align: top; border-bottom: 1px solid var(--border); }
+.kanpe table.mini tr:last-child td { border-bottom: none; }
+.kanpe table.mini td:first-child { font-weight: 700; color: var(--accent); width: 45%; }
+.kanpe table.mini .tr { display: block; font-size: 0.78rem; font-weight: 400; margin-top: 2px; color: var(--muted); }
+.kanpe .scroller { overflow-x: auto; }
+.kanpe .tips { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 5px; font-size: 0.9rem; }
+.kanpe .tips li b { color: var(--accent); }
+.kanpe .goal { color: var(--muted); font-size: 0.92rem; margin: 0; }
+.kanpe .totop { display: none; }

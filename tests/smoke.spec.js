@@ -33,6 +33,7 @@ test('記録 → 予習へ遷移、次レッスン繰り上げ、カード生成
   await page.selectOption('#logLesson', '14');
   await page.click('.seg button[data-rating="3"]');
   await page.click('#talkSeg button[data-talk="10"]');
+  await page.click('#view-log details.log summary');
   await page.fill('#stuckJa', 'その件は来週までに終わらせます');
   await page.fill('#stuckFix', "I'll get it done by next week.");
   await page.click('#stuckAdd');
@@ -136,7 +137,9 @@ test('AI フィードバック（モック）: 宣言ピースの判定が回収
     const body = JSON.parse(route.request().postData() || '{}');
     const wantsFeedback = JSON.stringify(body.output_config || {}).includes('trainer_questions');
     const fb = {
-      summary_ja: 'よく話せています。', good: ['質問を返せた'], corrections: [], stucks: [], words: [],
+      summary_ja: 'よく話せています。', good: ['質問を返せた'], corrections: [],
+      stucks: [{ ja: 'その件は来週までに終わらせます', en: 'I will get it done by next week.' }],
+      words: [{ en: 'get it done', ja: '終わらせる' }],
       key_phrase_use: [], piece_use: [{ piece: 'Lately, I think a lot about how people grow.', used: true, how_ja: '最後まで言えた' }],
       trainer_questions: [{ q_en: 'What do you do?', q_ja: '仕事は？', covered: true }],
       trainer_question_count: 3, learner_question_count: 2,
@@ -155,7 +158,12 @@ test('AI フィードバック（モック）: 宣言ピースの判定が回収
   await expect(page.locator('#aiResult')).toContainText('宣言したピースは言えたか');
   await expect(page.locator('#aiResult')).toContainText('聞かれた質問');
   await expect(page.locator('#aiResult')).toContainText('あなたから 2 回');
+  await expect(page.locator('#aiResult')).toContainText('記録に入れました');
   await expect(page.locator('#declaredBox .item button.yes')).toHaveAttribute('aria-pressed', 'true');
+  // タップ無しで詰まり・単語が下書きに入る
+  await expect(page.locator('#stuckList li')).toHaveCount(1);
+  await expect(page.locator('#wordList li')).toHaveCount(1);
+  await expect(page.locator('#stuckList')).toContainText('来週までに');
   await page.click('#saveSession');
   const s = await state(page);
   expect(s.sessions[0].ai.trainer_questions).toHaveLength(1);
@@ -242,4 +250,50 @@ test('ダークテーマでも描画される', async ({ page }) => {
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   expect(bg).toBe('rgb(16, 23, 30)');
   await expect(page.locator('h1')).toBeVisible();
+});
+
+test('カンペ: 同期先が無ければ案内、設定後は private リポジトリから読んで端末に保存', async ({ page }) => {
+  await page.click('#tab-kanpe');
+  await expect(page.locator('#kanpeStatus')).toContainText('同期先が未設定');
+  await expect(page.locator('#kanpeLesson option')).toHaveCount(20);
+
+  const b64 = (t) => Buffer.from(t, 'utf8').toString('base64');
+  let hits = 0;
+  await page.route('https://api.github.com/repos/kuroyanyan/improve-language-data/contents/**', async (route) => {
+    hits += 1;
+    const url = route.request().url();
+    if (url.endsWith('/kanpe/common.html')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sha: 'c', content: b64('<section class="card"><h3>自分の基本情報</h3><ul class="kp"><li><span class="en">I work at a trading card company in Japan.</span></li></ul></section>') }) });
+    }
+    if (/\/kanpe\/C\/14\.html$/.test(url)) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sha: 'k', content: b64('<div class="lesson-head"><p class="lesson-num">Lesson 14</p><h2>Talking About Your Workload</h2></div><section class="card"><h3>今日の型</h3><p>The most important task is …</p></section><script>window.__evil=1</script>') }) });
+    }
+    return route.fulfill({ status: 404, contentType: 'application/json', body: '{"message":"Not Found"}' });
+  });
+  await page.click('#tab-history');
+  await page.fill('#syncRepo', 'kuroyanyan/improve-language-data');
+  await page.fill('#syncPat', 'github_pat_test_not_real');
+  await page.click('#syncSave');
+  await page.click('#tab-kanpe');
+  await page.selectOption('#kanpeLesson', '14');
+  await expect(page.locator('#kanpeBody')).toContainText('Talking About Your Workload');
+  await expect(page.locator('#kanpeBody')).toContainText('今日の型');
+  expect(await page.evaluate(() => window.__evil)).toBeUndefined();
+  await expect(page.locator('#kanpeStatus')).toContainText('取得しました');
+
+  // 2回目はキャッシュから（ネットワークに出ない）
+  const before = hits;
+  await page.reload();
+  await page.click('#tab-kanpe');
+  await page.selectOption('#kanpeLesson', '14');
+  await expect(page.locator('#kanpeBody')).toContainText('Talking About Your Workload');
+  await expect(page.locator('#kanpeStatus')).toContainText('保存済み');
+  expect(hits).toBe(before);
+
+  // 予習タブからも開ける
+  await page.click('#tab-prep');
+  await page.click('#prepStart');
+  await page.click('#prepNext');
+  await page.click('#cueBox button.ghost');
+  await expect(page.locator('#view-kanpe')).toBeVisible();
 });

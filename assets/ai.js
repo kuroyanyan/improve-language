@@ -380,10 +380,11 @@ export function setupAI(hooks) {
       }
       say('Claude がフィードバックを作成中…（1分ほど）');
       const fb = await getFeedback(transcript, ctx, keys.anthropic);
-      renderFeedback(fb, hooks);
+      if (hooks.autoFill) hooks.autoFill(fb);
+      renderFeedback(fb, hooks, { readOnly: !!hooks.autoFill });
       hooks.setPendingAI({ ...fb, raw_transcript_chars: transcript.length, model: CLAUDE_MODEL, at: new Date().toISOString() });
       if (hooks.onPieceUse && fb.piece_use && fb.piece_use.length) hooks.onPieceUse(fb.piece_use, ctx.declaredPieces || []);
-      say('できました。使うものを「＋」で記録に入れてください');
+      say(hooks.autoFill ? 'できました。詰まり・単語は下の「記録に入るもの」に入れました。要らないものは ✕ で外して保存' : 'できました。使うものを「＋」で記録に入れてください');
       hooks.toast('AI フィードバック完了');
     } catch (e) {
       say(e.message);
@@ -428,7 +429,7 @@ export function renderFeedback(fb, hooks, { readOnly = false } = {}) {
   }
 
   if (fb.stucks && fb.stucks.length) {
-    box.appendChild(section('詰まっていた箇所 → 記録へ'));
+    box.appendChild(section(readOnly ? '詰まっていた箇所（記録に入れました）' : '詰まっていた箇所 → 記録へ'));
     const ul = el('ul', 'items');
     for (const s of fb.stucks) {
       ul.appendChild(pairRow(s.ja, s.en, readOnly ? null : () => hooks.addStuck({ ja: s.ja, fix: s.en })));
@@ -446,7 +447,7 @@ export function renderFeedback(fb, hooks, { readOnly = false } = {}) {
   }
 
   if (fb.words && fb.words.length) {
-    box.appendChild(section('覚える語・フレーズ → 記録へ'));
+    box.appendChild(section(readOnly ? '覚える語・フレーズ（記録に入れました）' : '覚える語・フレーズ → 記録へ'));
     const ul = el('ul', 'items');
     for (const w of fb.words) {
       ul.appendChild(pairRow(w.en, w.ja, readOnly ? null : () => hooks.addWord({ en: w.en, ja: w.ja })));

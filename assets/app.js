@@ -5,6 +5,7 @@ import { setupAI, loadKeys, saveKeys } from './ai.js';
 import { setupPieces, renderPieces, pickTodayPiece, recordPieceResult, activePieces, graduatedPieces, firstLine, lines as pieceLines } from './pieces.js';
 import { setupSample, renderSampleSummary, bestOf } from './sample.js';
 import { setupSync, scheduleSync, renderSyncStatus, mondayOf } from './sync.js';
+import { setupKanpe, openKanpe, syncKanpeRank } from './kanpe.js';
 
 const STORAGE_KEY = 'bizmates-log/v1';
 // AI フィードバックの system prompt に渡す、自分についての最小限の事実（名前は入れない）
@@ -232,6 +233,7 @@ function switchRank(rank) {
   fillLessonSelect($('logLesson'), state.profile.lastLogLesson);
   renderLogLesson();
   renderDeclared();
+  syncKanpeRank();
   renderAll();
   toast(`Rank ${state.profile.rank} に切り替えました`);
 }
@@ -340,7 +342,7 @@ function renderDraftLists() {
   const n = draft.stucks.length + draft.words.length;
   $('saveHint').textContent = n
     ? `詰まったこと ${draft.stucks.length} 件 / 単語 ${draft.words.length} 件を記録します。`
-    : '空のままでも、受けた記録だけ残せます。';
+    : 'まだ何も入っていません。録音か文字起こしを渡すと AI が入れます。空のままでも、受けた記録だけ残せます。';
 }
 
 function renderLogLesson() {
@@ -554,10 +556,14 @@ function renderCues() {
     }
   } else if (idx === 1) {
     if (!l || !l.keyPhrases.length) {
-      box.appendChild(el('p', 'hint', 'この回は Key Phrases が登録されていません。教材を開いて音読してください。'));
+      box.appendChild(el('p', 'hint', 'この回は Key Phrases が登録されていません。カンペを開いて音読してください。'));
     } else {
       for (const p of l.keyPhrases.slice(0, 8)) box.appendChild(cueBlock(p));
     }
+    const open = el('button', 'ghost', '📖 このレッスンのカンペを開く');
+    open.type = 'button';
+    open.addEventListener('click', () => openKanpe(currentRank(), lesson));
+    box.appendChild(open);
   } else if (idx === 2) {
     const piece = prep.pieceId ? state.pieces.find((p) => p.id === prep.pieceId) : null;
     if (piece) {
@@ -1106,6 +1112,10 @@ const ctx = {
   save, today, jpDate, uid, el, toast, buzz,
   getKeys: loadKeys,
   renderAll: () => renderAll(),
+  currentRank: () => currentRank(),
+  lessonsOf: (rank) => { const r = ranks.find((x) => x.rank === rank); return r ? r.lessons : []; },
+  suggestedLesson: () => suggestedNextLesson(),
+  switchView: (name) => switchView(name),
 };
 
 async function main() {
@@ -1130,6 +1140,7 @@ async function main() {
   setupPieces(ctx);
   setupSample(ctx);
   setupSync(ctx);
+  setupKanpe(ctx);
   setupAI({
     getContext() {
       const n = Number($('logLesson').value);
@@ -1143,6 +1154,16 @@ async function main() {
     addStuck(item) { draft.stucks.push(item); renderDraftLists(); },
     addWord(item) { draft.words.push(item); renderDraftLists(); },
     setPendingAI(ai) { draft.ai = ai; },
+    // AI が拾った詰まり・言い換え・語を、タップ無しで記録の下書きに入れる（要らなければ ✕）
+    autoFill(fb) {
+      const seen = new Set(draft.stucks.map((x) => `${x.ja}|${x.fix}`));
+      const pushStuck = (ja, fix) => { const k = `${ja}|${fix}`; if (ja && !seen.has(k)) { seen.add(k); draft.stucks.push({ ja, fix: fix || '' }); } };
+      for (const x of fb.stucks || []) pushStuck(x.ja, x.en);
+      for (const c of fb.corrections || []) pushStuck(c.why_ja, c.better);
+      const seenW = new Set(draft.words.map((x) => x.en));
+      for (const w of fb.words || []) { if (w.en && !seenW.has(w.en)) { seenW.add(w.en); draft.words.push({ en: w.en, ja: w.ja || '' }); } }
+      renderDraftLists();
+    },
     // AI が「宣言ピースを言えたか」を判定したら、回収ボタンに先に入れておく（本人が上書きできる）
     onPieceUse(results, declared) {
       for (const r of results) {

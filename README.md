@@ -35,8 +35,9 @@ npm test             # Playwright スモーク（Pixel 7 幅・API はモック�
 
 | タブ | 何をする |
 |---|---|
-| 記録 | レッスン番号・手応え・フリートーク分数・宣言したピースの回収（見ずに言えた／まだ）・詰まったこと・単語・メモ。録音／文字起こし貼り付け → AI フィードバック。レッスン外の実戦を1行 |
-| 5分予習 | 60s 前回の詰まり → 60s Key Phrases → 120s 今日のピースを宣言 → 60s 単語カード |
+| 記録 | 録音／文字起こし貼り付け → AI が詰まったこと・単語・宣言ピースの判定を自動で記録に入れる（要らないものは ✕）。レッスン番号・手応え・フリートーク分数・メモ。手入力は畳んだ任意項目。レッスン外の実戦を1行 |
+| 5分予習 | 60s 前回の詰まり → 60s Key Phrases（カンペを開くボタン付き） → 120s 今日のピースを宣言 → 60s 単語カード |
+| カンペ | レッスンごとの「今日の型・Key Phrases・See・Try・準備の質問・Act・追撃質問・細かい注意」。private のデータリポジトリから同期トークンで取得し、端末に保存（2回目からはオフラインで開ける） |
 | 自分の話 | ピースの作成（日本語 → 簡単な英語に）と一覧、60秒サンプル、単語カードのレビュー |
 | 履歴 | 今週の日数・言えるピース・実戦、今月の記録証、レッスン履歴、AI 設定、データ同期、JSON の書き出し／読み込み |
 
@@ -59,6 +60,10 @@ npm test             # Playwright スモーク（Pixel 7 幅・API はモック�
 
 このアプリは週1回のループで育てる。目的・指標・ガードレール・上方修正の規則は [docs/LOOP.md](docs/LOOP.md)。変更ゼロが既定で、挙動を変える PR には [docs/hypotheses/](docs/hypotheses/) の仮説ファイルが必要（CI が確認する）。
 
+## カンペ
+
+全レッスンのカンペ（教材の See 原文を含む）は公開リポジトリに置かず、private の `kuroyanyan/improve-language-data` の `kanpe/{rank}/NN.html` にある。アプリはデータ同期のトークンでこれを読み、端末の localStorage に保存する。Rank が進んだら教材 HTML からカンペを生成して同じ場所に足す（保守）。
+
 ## 教材データ
 
 `assets/data/lessons.json` に Bizmates Program Level 1 Rank C・D（各 Lesson 1–20）のトピックと Key Phrases が入っている。教材本文は入れない。
@@ -76,7 +81,8 @@ assets/styles.css            見た目
 assets/app.js                記録・予習・履歴・ランク切替・配線
 assets/pieces.js             自分史ピース
 assets/sample.js             60秒サンプル
-assets/sync.js               データ同期
+assets/sync.js               データ同期・private リポジトリの読み取り
+assets/kanpe.js              カンペの取得・表示
 assets/ai.js                 録音・文字起こし・Claude
 assets/data/lessons.json     教材データ
 docs/                        改善ループの規約・仮説・ルーティン

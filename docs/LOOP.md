@@ -86,7 +86,8 @@
 |---|---|---|
 | 記録の本体（文字起こし・メモ・ピースの日本語） | 端末の localStorage、書き出し JSON | 本人のみ |
 | 集計・ピースの英文と回数・サンプルの数値・実戦の1行 | `kuroyanyan/improve-language-data`（private） | 本人と週次ループ |
+| カンペ（各レッスンの型・Key Phrases・See・Try・準備の質問・Act・追撃質問・注意。教材本文を含む） | `kuroyanyan/improve-language-data` の `kanpe/{rank}/NN.html`（private）。アプリが同期トークンで取得し端末に保存 | 本人のみ |
 | アプリのコード・教材のトピック名と Key Phrases・仮説の定義と判定 | このリポジトリ（public） | 誰でも |
 | API キー・同期トークン | 端末の localStorage `bizmates-log/keys`。書き出しに含めない | 本人のみ |
 
-Bizmates の教材本文（HTML）は取り込まない。lessons.json に入れるのはトピック名と Key Phrases だけ。
+Bizmates の教材本文（HTML）は公開リポジトリに取り込まない。lessons.json に入れるのはトピック名と Key Phrases だけ。カンペ（See の原文を含む）は private のデータリポジトリにだけ置く。新しい Rank の教材が届いたら、教材 HTML → digest → カンペ生成 → `kanpe/{rank}/` へ追加、を保守（`data:`）として行う。

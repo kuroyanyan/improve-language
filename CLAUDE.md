@@ -27,6 +27,7 @@ npm test                    # Playwright スモーク（Pixel 7 幅）
 - 記録の本体: 端末の localStorage `bizmates-log/v1`（書き出し JSON）
 - API キー・同期トークン: localStorage `bizmates-log/keys`（書き出しに含めない）
 - 集計の同期先: `kuroyanyan/improve-language-data`（private）。週次ループが読む。
+- カンペ: 同じ private リポジトリの `kanpe/{rank}/NN.html`（教材の See 原文を含むので公開側には置かない）。アプリが同期トークンで読む。新 Rank は教材 HTML → digest → 生成 → 追加（保守 `data:`）。
 
 ## 構成
 ```
@@ -34,7 +35,8 @@ index.html                画面（記録 / 5分予習 / 自分の話 / 履歴�
 assets/app.js             状態・記録・予習・履歴・ランク切替・モジュール配線
 assets/pieces.js          自分史ピース（3文＋質問、宣言→回収、卒業）
 assets/sample.js          月1の60秒サンプル（録音→文字起こし→固定ルーブリック採点）
-assets/sync.js            集計スナップショットと GitHub への同期
+assets/sync.js            集計スナップショットと GitHub への同期・private ファイルの読み取り
+assets/kanpe.js           カンペタブ（private リポジトリから取得・端末に保存・表示）
 assets/ai.js              Claude / OpenAI 呼び出し、録音、AI フィードバック
 assets/data/lessons.json  Rank C・D のトピックと Key Phrases
 docs/LOOP.md              改善ループの規約（目的・指標・ガードレール）
