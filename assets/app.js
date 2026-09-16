@@ -724,7 +724,7 @@ function resetPrep(silent) {
 function finishPrep() {
   const lesson = prepLesson();
   const pieceId = prep.pieceId;
-  state.preps.push({ id: uid(), date: today(), rank: currentRank(), lesson, sentence: '', pieceId: pieceId || null });
+  state.preps.push({ id: uid(), date: today(), rank: currentRank(), lesson, pieceId: pieceId || null });
   save();
   resetPrep(true);
   renderDeclared();
@@ -965,6 +965,12 @@ function renderMonthCard() {
   $('monthBest').textContent = bestLine ? `今月のベスト1文: ${bestLine}` : '';
 }
 
+/** 予習で作った文。いまはピースを指す。sentence は予習にピースが無かった頃の記録。 */
+function prepText(p) {
+  const piece = p.pieceId ? state.pieces.find((x) => x.id === p.pieceId) : null;
+  return piece ? firstLine(piece.en) : (p.sentence || '');
+}
+
 function renderHistory() {
   $('stWeek').textContent = `${weekProgress()}/7`;
   $('stPieces').textContent = String(graduatedPieces(state).length);
@@ -983,7 +989,7 @@ function renderHistory() {
 
   // まだ受けていないレッスンの予習で作った文は、受講記録が無いのでここに出す
   const recorded = new Set(state.sessions.map((s) => `${s.rank || 'C'}-${s.lesson}`));
-  const ahead = state.preps.filter((p) => p.sentence && !recorded.has(`${p.rank || 'C'}-${p.lesson}`)).reverse();
+  const ahead = state.preps.filter((p) => prepText(p) && !recorded.has(`${p.rank || 'C'}-${p.lesson}`)).reverse();
   if (ahead.length) {
     const d = el('details', 'log');
     d.open = true;
@@ -991,7 +997,7 @@ function renderHistory() {
     sm.appendChild(document.createTextNode('予習で作った文'));
     sm.appendChild(el('span', 'when', 'まだ受けていないレッスン'));
     const inner = el('div', 'inner');
-    for (const p of ahead.slice(0, 5)) inner.appendChild(cueBlock(p.sentence, `${lessonLabel(p.rank, p.lesson)} · ${jpDate(p.date)}`));
+    for (const p of ahead.slice(0, 5)) inner.appendChild(cueBlock(prepText(p), `${lessonLabel(p.rank, p.lesson)} · ${jpDate(p.date)}`));
     d.append(sm, inner);
     box.appendChild(d);
   }
@@ -1044,10 +1050,10 @@ function renderHistory() {
         inner.appendChild(t);
       }
     }
-    const preps = state.preps.filter((p) => (p.rank || 'C') === (s.rank || 'C') && p.lesson === s.lesson && p.sentence);
+    const preps = state.preps.filter((p) => (p.rank || 'C') === (s.rank || 'C') && p.lesson === s.lesson && prepText(p));
     if (preps.length) {
       inner.appendChild(el('h4', null, '予習で作った文'));
-      for (const p of preps) inner.appendChild(cueBlock(p.sentence, jpDate(p.date)));
+      for (const p of preps) inner.appendChild(cueBlock(prepText(p), jpDate(p.date)));
     }
     if (!inner.children.length) inner.appendChild(el('p', 'hint', '受けた記録のみ。'));
 

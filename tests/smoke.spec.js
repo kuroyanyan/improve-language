@@ -106,6 +106,33 @@ test('実戦ログ・今週の日数・今月の記録証', async ({ page }) => 
   await expect(page.locator('#monthStats .stat')).toHaveCount(4);
 });
 
+test('予習で作った文は履歴に残る（古い sentence だけの記録も読める）', async ({ page }) => {
+  await addPiece(page);
+  await go(page, 'prep');
+  await page.selectOption('#prepLesson', '7');
+  await page.click('#prepDone');
+
+  // まだ受けていないレッスンなので、履歴の先頭に出る
+  await go(page, 'history');
+  const ahead = page.locator('#historyList details').first();
+  await expect(ahead).toContainText('予習で作った文');
+  await expect(ahead).toContainText('Lately, I think a lot about how people grow.');
+  expect((await state(page)).preps[0].pieceId).toBeTruthy();
+
+  // そのレッスンを受けたら、受講記録の中に移る
+  await go(page, 'log');
+  await page.selectOption('#logLesson', '7');
+  await page.click('#saveSession');
+  await go(page, 'history');
+  await expect(page.locator('#historyList details').first()).toContainText('予習で作った文');
+
+  // ピースが無かった頃の記録（sentence だけ）も、そのまま出る
+  await patchState(page, "st.preps.push({ id: 'old', date: '2026-09-01', rank: 'C', lesson: 12, sentence: 'I work at a trading card company.', pieceId: null });");
+  await page.reload();
+  await go(page, 'history');
+  await expect(page.locator('#historyList')).toContainText('I work at a trading card company.');
+});
+
 test('Rank 切替で教材が変わり、記録はランク付きで残る', async ({ page }) => {
   await page.selectOption('#rankPick', 'D');
   await expect(page.locator('#logLesson option').first()).toContainText('Talking About Your Company');
