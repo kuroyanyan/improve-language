@@ -579,3 +579,17 @@ details.log .inner h4 { margin-top: 6px; }
 .kanpe .tips li b { color: var(--accent); }
 .kanpe .goal { color: var(--muted); font-size: 0.92rem; margin: 0; }
 .kanpe .totop { display: none; }
+
+/* ---------- 録音中の表示と、合言葉のゲート ---------- */
+.reclive {
+  font-size: 0.8rem; font-weight: 700; color: var(--danger);
+  background: var(--warn-bg); border-radius: 99px; padding: 3px 10px; white-space: nowrap;
+}
+.reclive[hidden] { display: none; }
+.gate { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.gate[hidden] { display: none; }
+.gate-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 24px; width: min(360px, 100%); display: flex; flex-direction: column; gap: 12px;
+}
+.gate-card h2 { font-family: "Lora", Georgia, serif; font-size: 1.2rem; margin: 0; }

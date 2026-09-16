@@ -1,10 +1,10 @@
-// データ同期（任意）— 集計だけを private の GitHub リポジトリに置き、週1の改善ループが読む。
-// 送らないもの: 文字起こし本文・音声・メモ・API キー・トレーナー名。
-// 認証はそのリポジトリだけに絞った fine-grained PAT。API キーと同じ場所（書き出しに含まれない）に保存する。
+// 記録の保存 — 端末の localStorage と、裏方（private リポジトリ）の両方に置く。
+// 裏方には記録の全体（state.json）と、週1の改善ループが読む集計（latest.json）を保存する。
+// 認証もトークンもサーバー側にあり、このファイルは持たない。
 
-import { loadKeys, saveKeys } from './ai.js';
+import { apiGet, apiSend } from './api.js';
 
-const DEBOUNCE_MS = 8000;
+const DEBOUNCE_MS = 4000;
 const SNAPSHOT_SCHEMA = 1;
 
 let ctx = null;
@@ -100,111 +100,57 @@ export function buildSnapshot(state, todayStr) {
   };
 }
 
-// ---------------------------------------------------------------- GitHub Contents API
+// ---------------------------------------------------------------- 保存と読み込み
 
-function b64utf8(str) {
-  const bytes = new TextEncoder().encode(str);
-  let bin = '';
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-
-function headers(pat) {
-  return {
-    Authorization: `Bearer ${pat}`,
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'Content-Type': 'application/json',
-  };
-}
-
-async function putFile(cfg, path, text, message) {
-  const url = `https://api.github.com/repos/${cfg.repo}/contents/${path}`;
-  let sha;
-  const got = await fetch(url, { headers: headers(cfg.pat) });
-  if (got.ok) sha = (await got.json()).sha;
-  else if (got.status !== 404) throw new Error(`GitHub 読み取りに失敗（${got.status}）`);
-  const res = await fetch(url, {
-    method: 'PUT', headers: headers(cfg.pat),
-    body: JSON.stringify({ message, content: b64utf8(text), ...(sha ? { sha } : {}) }),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`GitHub 書き込みに失敗（${res.status}）${t.slice(0, 120)}`);
+/** 起動時に裏方から記録を読む。取れなければ null（端末の保存で動かす）。 */
+export async function loadRemoteState() {
+  try {
+    const r = await apiGet('/api/state');
+    return r.state || null;
+  } catch {
+    return null;
   }
 }
 
-export async function pushSnapshot(snapshot, cfg) {
-  const text = JSON.stringify(snapshot, null, 2);
-  await putFile(cfg, `snapshots/${snapshot.date}.json`, text, `snapshot ${snapshot.date}`);
-  await putFile(cfg, 'latest.json', text, `latest ${snapshot.date}`);
-}
-
-
-/** private リポジトリのファイルを1つ読む（Contents API、UTF-8 テキスト）。 */
-export async function fetchRepoFile(path) {
-  const cfg = syncConfig();
-  if (!syncConfigured()) throw new Error('同期先が未設定です');
-  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${path}`, { headers: headers(cfg.pat) });
-  if (res.status === 404) throw new Error(`まだありません: ${path}`);
-  if (!res.ok) throw new Error(`GitHub 読み取りに失敗（${res.status}）`);
-  const j = await res.json();
-  const bin = atob((j.content || '').replace(/\n/g, ''));
-  const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
-
-// ---------------------------------------------------------------- 実行
-
-export function syncConfig() {
-  const k = loadKeys();
-  return { repo: (k.github_repo || '').trim(), pat: (k.github_pat || '').trim() };
-}
-export const syncConfigured = () => { const c = syncConfig(); return !!(c.repo && c.pat && /^[\w.-]+\/[\w.-]+$/.test(c.repo)); };
-
 export async function syncNow(silent = false) {
-  if (!syncConfigured()) { if (!silent) ctx.toast('同期先が未設定です'); return false; }
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) { last = { at: '', ok: false, msg: 'オフライン' }; renderSyncStatus(); return false; }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    last = { at: '', ok: false, msg: 'オフライン' };
+    renderSyncStatus();
+    return false;
+  }
   try {
-    const snap = buildSnapshot(ctx.state(), ctx.today());
-    await pushSnapshot(snap, syncConfig());
+    const state = ctx.state();
+    await apiSend('/api/state', { state, snapshot: buildSnapshot(state, ctx.today()) }, 'PUT');
     last = { at: new Date().toISOString(), ok: true, msg: '' };
-    if (!silent) ctx.toast('同期しました');
+    if (!silent) ctx.toast('保存しました');
     try { localStorage.setItem('bizmates-log/sync', last.at); } catch { /* 無視 */ }
   } catch (e) {
     last = { at: new Date().toISOString(), ok: false, msg: e.message };
-    if (!silent) ctx.toast('同期できませんでした');
+    if (!silent) ctx.toast('保存できませんでした');
   }
   renderSyncStatus();
   return last.ok;
 }
 
 export function scheduleSync() {
-  if (!ctx || !syncConfigured()) return;
+  if (!ctx) return;
   clearTimeout(timer);
   timer = setTimeout(() => { syncNow(true); }, DEBOUNCE_MS);
 }
 
+/** 記録の保存状態を、履歴タブの一行に出す（設定は無い）。 */
 export function renderSyncStatus() {
   const s = $('syncStatus');
   if (!s) return;
-  if (!syncConfigured()) { s.textContent = '未設定。設定すると、保存のたびに集計だけを自動で送ります。'; return; }
-  let lastOk = last.ok ? last.at : '';
-  if (!lastOk) { try { lastOk = localStorage.getItem('bizmates-log/sync') || ''; } catch { /* 無視 */ } }
-  const when = lastOk ? new Date(lastOk).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'まだ';
-  s.textContent = last.ok === false ? `最後の同期に失敗: ${last.msg}` : `最後の同期: ${when}`;
+  if (last.ok === false) { s.textContent = `記録の保存に失敗: ${last.msg}（この端末には残っています）`; return; }
+  let at = last.ok ? last.at : '';
+  if (!at) { try { at = localStorage.getItem('bizmates-log/sync') || ''; } catch { /* 無視 */ } }
+  s.textContent = at
+    ? `記録は自動で保存されています（最後: ${new Date(at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}）`
+    : '記録はこの端末と、あなた専用の保存先に自動で残ります。';
 }
 
 export function setupSync(c) {
   ctx = c;
-  const cfg = syncConfig();
-  $('syncRepo').value = cfg.repo;
-  $('syncPat').value = cfg.pat;
-  $('syncSave').addEventListener('click', () => {
-    saveKeys({ github_repo: $('syncRepo').value.trim(), github_pat: $('syncPat').value.trim() });
-    renderSyncStatus();
-    ctx.toast('同期先を保存しました');
-  });
-  $('syncNow').addEventListener('click', () => syncNow(false));
   renderSyncStatus();
 }

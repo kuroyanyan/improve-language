@@ -17,6 +17,7 @@
   <header class="topbar">
     <button type="button" class="menubtn" id="menuBtn" aria-label="メニューを開く" aria-expanded="false" aria-controls="drawer">☰</button>
     <h1>Bizmates Log <span class="where" id="whereLabel">記録</span></h1>
+    <span class="reclive" id="recLive" hidden>● 録音中 0:00</span>
     <div class="rankbar">
       <select id="rankPick" class="rankpick" aria-label="Rank を切り替える" hidden></select>
       <span class="sub" id="rankLine">Level 1</span>
@@ -274,44 +275,9 @@
     </div>
 
     <div class="card">
-      <h2>AI 設定 <span class="jp">キーはこの端末にだけ保存・書き出しに含まれない</span></h2>
-      <label class="field">Anthropic API キー（フィードバック・ピースの英語化・採点）
-        <input type="password" id="keyAnthropic" placeholder="sk-ant-…" autocomplete="off">
-      </label>
-      <label class="field">OpenAI API キー（音声の文字起こし用・貼り付け運用なら不要）
-        <input type="password" id="keyOpenai" placeholder="sk-…" autocomplete="off">
-      </label>
-      <button type="button" id="saveKeys">キーを保存</button>
-      <p class="hint">ブラウザから API を直接呼びます。自分だけが開く、自分の端末で使う前提です。共有端末では使わないでください。</p>
-    </div>
-
-    <div class="card">
-      <h2>データ同期 <span class="jp">任意・集計だけを private リポジトリへ</span></h2>
-      <label class="field">GitHub リポジトリ（owner/name）
-        <input type="text" id="syncRepo" placeholder="kuroyanyan/improve-language-data" autocomplete="off">
-      </label>
-      <label class="field">Fine-grained トークン（そのリポジトリの Contents: Read and write だけ）
-        <input type="password" id="syncPat" placeholder="github_pat_…" autocomplete="off">
-      </label>
-      <div class="row">
-        <button type="button" id="syncSave">同期先を保存</button>
-        <button type="button" class="primary" id="syncNow">今すぐ同期</button>
-      </div>
+      <h2>記録の保存 <span class="jp">自動。設定はありません</span></h2>
       <p class="hint" id="syncStatus"></p>
-      <p class="hint">送るのは週ごとの集計・ピースの英文と回数・サンプルの数値・実戦の1行だけ。文字起こし・音声・メモ・キーは送りません。週1の改善ループがこれを読みます。</p>
-    </div>
-
-    <div class="card">
-      <h2>データ <span class="jp">この端末のブラウザに保存されています</span></h2>
-      <p class="hint">記録はサーバーに送られません（同期を設定した場合の集計を除く）。端末を変えるときや、念のためのバックアップは書き出しから。</p>
-      <div class="row">
-        <button type="button" id="exportBtn">JSON を書き出す</button>
-        <button type="button" id="importBtn">読み込む</button>
-      </div>
-      <input type="file" id="importFile" accept="application/json,.json" hidden>
-      <div class="row">
-        <button type="button" class="danger ghost" id="wipeBtn">すべて消す</button>
-      </div>
+      <p class="hint">記録はこの端末と、黒川さん専用の保存先の両方に残ります。書き出し・移行・削除は、Claude に頼んでください。</p>
     </div>
 
   </section>
@@ -337,6 +303,18 @@
 </nav>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="gate" id="gate" hidden>
+  <form class="gate-card" id="gateForm">
+    <h2>Bizmates Log</h2>
+    <label class="field">合言葉
+      <input type="password" id="gateInput" autocomplete="current-password" autofocus>
+    </label>
+    <button type="submit" class="primary" id="gateSubmit">入る</button>
+    <p class="hint" id="gateError"></p>
+    <p class="hint">この端末では、次からは入れたままになります。</p>
+  </form>
+</div>
 
 <script type="module" src="assets/app.js"></script>
 </body>

@@ -2,7 +2,7 @@
 
 ## これは何
 黒川広貴（kuroyanyan）個人の英語学習ログ Web アプリ。Bizmates のレッスンを「自分の話を英語で言えるようにする練習」に変える。
-静的サイト・依存なし・データは端末の localStorage。公開先は GitHub Pages（https://kuroyanyan.github.io/improve-language/）。
+アプリ＋小さな裏方サーバー（Node、依存なし）。Railway 1つで配信と中継をまかなう。API キーと GitHub トークンはサーバーの環境変数にあり、ブラウザには渡さない。設定画面は作らない。
 
 ## 絶対遵守
 - **GitHub は kuroyanyan 個人アカウントのみ。** japantradingcardcenter には絶対に push しない。日本トレカセンター（JTCC）とは無関係。「JTC」という略称は使わない。
@@ -17,16 +17,16 @@
 ```bash
 npm install                 # 初回のみ（Playwright）
 npx playwright install chromium
-npm run serve               # http://127.0.0.1:8787
+npm start                   # http://localhost:8080（裏方ごと起動）
 npm run check               # 構文と JSON
-npm test                    # Playwright スモーク（Pixel 7 幅）
+npm test                    # Playwright スモーク（/api/* はモック）
 ```
-`file://` では ES module と fetch が動かないので、必ずサーブする。
+キーが無くても画面は動く（AI とカンペだけ使えない）。ブラウザから外部 API を直接呼ぶコードを足さないこと。
 
 ## データの所在
 - 記録の本体: 端末の localStorage `bizmates-log/v1`（書き出し JSON）
 - API キー・同期トークン: localStorage `bizmates-log/keys`（書き出しに含めない）
-- 集計の同期先: `kuroyanyan/improve-language-data`（private）。週次ループが読む。
+- 記録の置き場: `kuroyanyan/improve-language-data`（private）の `state.json`（全体）と `latest.json`（集計）。裏方が読み書きする。
 - カンペ: 同じ private リポジトリの `kanpe/{rank}/NN.html`（教材の See 原文を含むので公開側には置かない）。アプリが同期トークンで読む。新 Rank は教材 HTML → digest → 生成 → 追加（保守 `data:`）。
 
 ## 構成
@@ -37,7 +37,11 @@ assets/pieces.js          自分史ピース（3文＋質問、宣言→回収�
 assets/sample.js          月1の60秒サンプル（録音→文字起こし→固定ルーブリック採点）
 assets/sync.js            集計スナップショットと GitHub への同期・private ファイルの読み取り
 assets/kanpe.js           カンペタブ（private リポジトリから取得・端末に保存・表示）
-assets/ai.js              Claude / OpenAI 呼び出し、録音、AI フィードバック
+assets/ai.js              録音と、裏方への受け渡し・AI フィードバックの表示
+assets/api.js             /api/* の窓口と合言葉ゲート
+server/index.js           裏方: 配信・認証・ルーティング
+server/claude.js          裏方: プロンプトとスキーマ、Claude / OpenAI 呼び出し
+server/store.js           裏方: private リポジトリの読み書き
 assets/data/lessons.json  Rank C・D のトピックと Key Phrases
 docs/LOOP.md              改善ループの規約（目的・指標・ガードレール）
 docs/hypotheses/          仮説ファイル（判定基準を先に固定）

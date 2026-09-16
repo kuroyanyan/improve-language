@@ -1,8 +1,8 @@
 // カンペ — レッスンごとの「型・Key Phrases・See・Try・準備の質問・Act・追撃質問・注意」。
-// 教材本文を含むので公開リポジトリには置かず、private のデータリポジトリから同期トークンで取りに行く。
+// 教材本文を含むので公開リポジトリには置かず、裏方（/api/kanpe）から取りに行く。
 // 取ったものは localStorage に置き、次回からはオフラインでも開ける。
 
-import { fetchRepoFile, syncConfigured } from './sync.js';
+import { apiGet } from './api.js';
 
 const CACHE_KEY = 'bizmates-log/kanpe';
 const VIEW_KEY = 'bizmates-log/kanpe-view';
@@ -40,28 +40,14 @@ export function sanitize(html) {
 export async function getKanpe(rank, lesson, { refresh = false } = {}) {
   const key = `${rank}-${lesson}`;
   const hit = loadCache()[key];
-  if (!refresh && hit && hit.html) return { html: hit.html, from: 'cache', at: hit.at };
-  if (!syncConfigured()) throw new Error('同期先が未設定です。履歴 → データ同期にリポジトリとトークンを入れると読めます');
-  const path = `kanpe/${rank}/${String(lesson).padStart(2, '0')}.html`;
-  const html = await fetchRepoFile(path);
-  // 取得後に読み直してから書く（共通カードと同時に取ると、先に読んだ古いキャッシュで上書きしてしまうため）
+  if (!refresh && hit && hit.html) return { html: hit.html, common: (loadCache().common || {}).html || '', from: 'cache', at: hit.at };
+  const r = await apiGet(`/api/kanpe?rank=${encodeURIComponent(rank)}&lesson=${lesson}`);
   const cache = loadCache();
-  cache[key] = { html, at: new Date().toISOString() };
+  const at = new Date().toISOString();
+  cache[key] = { html: r.html, at };
+  if (r.common) cache.common = { html: r.common, at };
   saveCache(cache);
-  return { html, from: 'repo', at: cache[key].at };
-}
-
-export async function getCommon({ refresh = false } = {}) {
-  const hit = loadCache().common;
-  if (!refresh && hit && hit.html) return hit.html;
-  if (!syncConfigured()) return '';
-  try {
-    const html = await fetchRepoFile('kanpe/common.html');
-    const cache = loadCache();
-    cache.common = { html, at: new Date().toISOString() };
-    saveCache(cache);
-    return html;
-  } catch { return ''; }
+  return { html: r.html, common: r.common || '', from: 'server', at };
 }
 
 function fillLessons() {
@@ -84,9 +70,9 @@ export async function renderKanpe({ refresh = false } = {}) {
   box.replaceChildren();
   status.textContent = '読み込み中…';
   try {
-    const [common, k] = await Promise.all([getCommon({ refresh }), getKanpe(view.rank, view.lesson, { refresh })]);
-    if (common) {
-      const c = sanitize(common);
+    const k = await getKanpe(view.rank, view.lesson, { refresh });
+    if (k.common) {
+      const c = sanitize(k.common);
       c.classList.add('common');
       box.appendChild(c);
     }

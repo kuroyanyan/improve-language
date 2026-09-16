@@ -13,15 +13,26 @@ Bizmates のレッスンを「受けっぱなし」にしない、自分用の�
 
 ## 使い方
 
-静的サイトなので、ビルドもサーバーも要らない。公開版: https://kuroyanyan.github.io/improve-language/
+アプリと、その裏方（小さな Node サーバー）を Railway 1つで動かす。API キーと GitHub トークンはサーバーの環境変数にあり、ブラウザには一切渡らない。設定画面は無い。
 
 ### ローカルで動かす
 
 ```bash
-npm run serve        # python3 -m http.server 8787
+npm start
 ```
 
-`file://` で直接開くと `lessons.json` の読み込みと ES module が動かないので、必ず何かでサーブする。
+http://localhost:8080 で開く。環境変数（下記）が無くても画面は動き、AI とカンペだけが使えない。
+
+### 環境変数（Railway の Variables）
+
+| 変数 | 用途 |
+|---|---|
+| `ANTHROPIC_API_KEY` | フィードバック・ピースの英語化・サンプル採点（`claude-opus-5`） |
+| `OPENAI_API_KEY` | 録音の文字起こし（`gpt-4o-transcribe`） |
+| `GITHUB_TOKEN` | private リポジトリ（カンペと記録）の読み書き |
+| `APP_PASSCODE` | 本人だけが入れるようにする合言葉。未設定だと誰でも開ける |
+| `SESSION_SALT` | 任意。ログイン状態の署名に使う。未設定だと再起動のたびに入れ直しになる |
+| `DATA_REPO` | 任意。既定は `kuroyanyan/improve-language-data` |
 
 ### テスト
 
@@ -37,24 +48,19 @@ npm test             # Playwright スモーク（Pixel 7 幅・API はモック�
 |---|---|
 | 記録 | 録音／文字起こし貼り付け → AI が詰まったこと・単語・宣言ピースの判定を自動で記録に入れる（要らないものは ✕）。レッスン番号・手応え・フリートーク分数・メモ。手入力は畳んだ任意項目。レッスン外の実戦を1行 |
 | 5分予習 | 60s 前回の詰まり → 60s Key Phrases（カンペを開くボタン付き） → 120s 今日のピースを宣言 → 60s 単語カード |
-| カンペ | レッスンごとの「今日の型・Key Phrases・See・Try・準備の質問・Act・追撃質問・細かい注意」。private のデータリポジトリから同期トークンで取得し、端末に保存（2回目からはオフラインで開ける） |
+| カンペ | レッスンごとの「今日の型・Key Phrases・See・Try・準備の質問・Act・追撃質問・細かい注意」。裏方が private リポジトリから返し、端末に保存（2回目からはオフラインで開ける） |
 | 自分の話 | ピースの作成（日本語 → 簡単な英語に）と一覧、60秒サンプル、単語カードのレビュー |
-| 履歴 | 今週の日数・言えるピース・実戦、今月の記録証、レッスン履歴、AI 設定、データ同期、JSON の書き出し／読み込み |
+| 履歴 | 今週の日数・言えるピース・実戦、今月の記録証、レッスン履歴。設定は無い |
 
 右上の Rank で教材を切り替える（Rank C・D）。
 
-## AI（任意）
+## AI
 
-「履歴」タブの **AI 設定** に API キーを入れると使える。
+ブラウザは AI を直接呼ばない。裏方の `/api/transcribe`・`/api/ai/feedback`・`/api/ai/piece`・`/api/ai/sample` に頼み、サーバーが `gpt-4o-transcribe` と `claude-opus-5`（構造化出力・拒否時はサーバー側フォールバック）を呼ぶ。プロンプトとスキーマもサーバー側（`server/claude.js`）にある。
 
-- **Anthropic API キー**: フィードバック・ピースの英語化・サンプルの採点。モデルは `claude-opus-5`、構造化出力
-- **OpenAI API キー**: 録音からの文字起こし（`gpt-4o-transcribe`）。貼り付け運用なら不要
+## 記録の置き場
 
-キーは `localStorage` の `bizmates-log/keys` にだけ保存され、JSON の書き出しには含まれない。ブラウザから API を直接呼ぶので、自分だけが使う端末で使うこと。
-
-## データ同期（任意）
-
-集計だけを private リポジトリ `kuroyanyan/improve-language-data` に送り、週1の改善ループが読む。送るのは週ごとの集計・ピースの英文と回数・サンプルの数値・実戦の1行。文字起こし・音声・メモ・キーは送らない。認証はそのリポジトリだけに絞った fine-grained トークン（Contents: Read and write）。
+記録は端末の `localStorage` と、裏方経由で private リポジトリ `kuroyanyan/improve-language-data` の `state.json` の両方に自動で残る。週1の改善ループが読む集計は同じく `latest.json`。書き出し・移行・削除の画面は持たず、Claude に頼む運用。
 
 ## 改善ループ
 

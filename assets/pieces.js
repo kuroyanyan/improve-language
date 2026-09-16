@@ -2,7 +2,7 @@
 // 書いた時点では数えない。レッスンのフリートークで見ずに言えたら 1 回。別の日に 3 回言えたら卒業。
 // 英語化は「大山スタイル」（基本語・広い動詞・1文12語以下・1文1意）で Claude に縛りをかける。
 
-import { callClaude, OYAMA_STYLE } from './ai.js';
+import { pieceToEnglish as apiPiece } from './ai.js';
 
 export const PIECE_CATS = [
   { id: 'origin', ja: '育ち・住まい' },
@@ -64,44 +64,7 @@ export function validatePiece(ja, en) {
   return '';
 }
 
-const PIECE_SCHEMA = {
-  type: 'object',
-  properties: {
-    en_lines: {
-      type: 'array',
-      items: { type: 'string' },
-      description: '英語の行。3文（事実・気持ちか考え・今とのつながり）＋最後に相手への短い質問1つ。各行1文、12語以下。',
-    },
-    rare_words: {
-      type: 'array',
-      description: '基本語でない語があれば挙げる（最大3つ）。無ければ空。',
-      items: {
-        type: 'object',
-        properties: {
-          word: { type: 'string' },
-          simpler: { type: 'string', description: 'より簡単な言い方。無ければ空文字' },
-        },
-        required: ['word', 'simpler'],
-        additionalProperties: false,
-      },
-    },
-    note_ja: { type: 'string', description: '日本語で一言。何を削ったか、どこを短くしたか。' },
-  },
-  required: ['en_lines', 'rare_words', 'note_ja'],
-  additionalProperties: false,
-};
-
-export async function pieceToEnglish(ja, catId, key) {
-  const system = [
-    'You turn a Japanese self-introduction note into spoken English for a Level 1 learner.',
-    OYAMA_STYLE,
-    'Output exactly: 3 sentences (the fact; the feeling or thought; the link to now), then 1 short question back to the listener.',
-    'The question should be easy to answer in a few words at first (yes/no or a short answer).',
-    'Keep the learner\'s own content. Do not add facts. Never use the abbreviation "JTC".',
-  ].join('\n');
-  const user = `Category: ${catJa(catId)}\nJapanese note (up to 3 lines + a question):\n"""\n${ja}\n"""`;
-  return callClaude({ system, user, schema: PIECE_SCHEMA, key, maxTokens: 1500 });
-}
+export const pieceToEnglish = (ja, catId) => apiPiece({ ja, cat: catJa(catId) });
 
 // ---------------------------------------------------------------- UI（自分の話タブ）
 
@@ -183,12 +146,10 @@ export function setupPieces(c) {
   $('pieceAI').addEventListener('click', async () => {
     const ja = $('pieceJa').value.trim();
     if (!ja) { $('pieceJa').focus(); return; }
-    const key = ctx.getKeys().anthropic;
-    if (!key) { ctx.toast('Anthropic のキーが未設定です（履歴 → AI 設定）'); return; }
     $('pieceAI').disabled = true;
     $('pieceNote').textContent = '英語にしています…';
     try {
-      const r = await pieceToEnglish(ja, $('pieceCat').value, key);
+      const r = await pieceToEnglish(ja, $('pieceCat').value);
       $('pieceEn').value = (r.en_lines || []).join('\n');
       const rare = (r.rare_words || []).filter((w) => w.word);
       $('pieceNote').textContent = (r.note_ja || '')

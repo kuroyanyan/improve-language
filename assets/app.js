@@ -1,15 +1,14 @@
 // Bizmates Log — レッスン後の記録と、次回の5分予習。
 // 保存先は localStorage だけ。バックエンドもビルドも無し。
 
-import { setupAI, loadKeys, saveKeys } from './ai.js';
+import { setupAI } from './ai.js';
+import { setupGate, ensureSession } from './api.js';
 import { setupPieces, renderPieces, pickTodayPiece, recordPieceResult, activePieces, graduatedPieces, firstLine, lines as pieceLines } from './pieces.js';
 import { setupSample, renderSampleSummary, bestOf } from './sample.js';
-import { setupSync, scheduleSync, renderSyncStatus, mondayOf } from './sync.js';
+import { setupSync, scheduleSync, renderSyncStatus, mondayOf, loadRemoteState, syncNow } from './sync.js';
 import { setupKanpe, openKanpe, syncKanpeRank } from './kanpe.js';
 
 const STORAGE_KEY = 'bizmates-log/v1';
-// AI フィードバックの system prompt に渡す、自分についての最小限の事実（名前は入れない）
-const LEARNER_PROFILE = 'Head of HR at a trading card company in Japan; team of seven; responsible for hiring and organization; also runs a new business; hobbies: running, cooking, working out.';
 const PREP_STEPS = [
   { title: '前回つまずいたところ', seconds: 60, desc: '日本語を見て、英語を声に出す。出なければ答えを読む。' },
   { title: '今日の Key Phrases', seconds: 60, desc: '2回ずつ音読する。意味より先に口を慣らす。' },
@@ -1002,54 +1001,7 @@ function renderHistory() {
 }
 
 function setupHistoryTab() {
-  const keys = loadKeys();
-  $('keyAnthropic').value = keys.anthropic;
-  $('keyOpenai').value = keys.openai;
-  $('saveKeys').addEventListener('click', () => {
-    saveKeys({ anthropic: $('keyAnthropic').value.trim(), openai: $('keyOpenai').value.trim() });
-    toast('キーを保存しました');
-  });
-
-  $('exportBtn').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = el('a');
-    a.href = url;
-    a.download = `bizmates-log-${today()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast('書き出しました');
-  });
-
-  $('importBtn').addEventListener('click', () => $('importFile').click());
-  $('importFile').addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try {
-      const parsed = JSON.parse(await file.text());
-      if (!parsed || !Array.isArray(parsed.sessions)) throw new Error('形式が違います');
-      if (!confirm('いまの記録を、読み込むファイルの内容で置き換えます。よろしいですか？')) return;
-      state = { ...blankState(), ...parsed, profile: { ...blankState().profile, ...(parsed.profile || {}) } };
-      save();
-      boot(true);
-      toast('読み込みました');
-    } catch (err) {
-      console.warn(err);
-      toast('読み込めませんでした');
-    } finally {
-      e.target.value = '';
-    }
-  });
-
-  $('wipeBtn').addEventListener('click', () => {
-    if (!confirm('この端末に保存された記録をすべて消します。元に戻せません。よろしいですか？')) return;
-    state = blankState();
-    localStorage.removeItem(STORAGE_KEY);
-    boot(true);
-    toast('消しました');
-  });
+  renderSyncStatus();
 }
 
 // ---------------------------------------------------------------- タブ切り替え
@@ -1130,7 +1082,6 @@ function boot(isReload) {
 const ctx = {
   state: () => state,
   save, today, jpDate, uid, el, toast, buzz,
-  getKeys: loadKeys,
   renderAll: () => renderAll(),
   currentRank: () => currentRank(),
   lessonsOf: (rank) => { const r = ranks.find((x) => x.rank === rank); return r ? r.lessons : []; },
@@ -1139,7 +1090,17 @@ const ctx = {
 };
 
 async function main() {
+  setupGate();
   load();
+  await ensureSession();
+  const remote = await loadRemoteState();
+  if (remote && typeof remote === 'object') {
+    const localCount = state.sessions.length + state.preps.length;
+    const remoteCount = (remote.sessions || []).length + (remote.preps || []).length;
+    // 端末側にだけ新しい記録があるときは上書きしない（そのまま保存し直す）
+    if (remoteCount >= localCount) { state = normalize(remote); save(); }
+    else syncNow(true);
+  }
   try {
     await loadLessons();
   } catch (e) {
@@ -1166,7 +1127,7 @@ async function main() {
       const n = Number($('logLesson').value);
       const l = lessonById.get(n) || { topic: '', keyPhrases: [] };
       return {
-        lesson: n, topic: l.topic, keyPhrases: l.keyPhrases, profile: LEARNER_PROFILE,
+        lesson: n, topic: l.topic, keyPhrases: l.keyPhrases,
         declaredPieces: declaredPieces(n).map((p) => ({ id: p.id, en: p.en })),
         pieces: activePieces(state).concat(graduatedPieces(state)).map((p) => ({ id: p.id, en: p.en })),
       };

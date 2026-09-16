@@ -1,7 +1,7 @@
 // 月1回の60秒サンプル — 毎回同じ3問に60秒で答え、自己ベストを更新していく。合否は無い。
 // 録音 → 文字起こし（OpenAI） → 固定ルーブリックで採点（Claude）。語数/分は端末側で計算する。
 
-import { callClaude, transcribeBlob, createRecorder, OYAMA_STYLE } from './ai.js';
+import { scoreSample as apiScore, transcribeBlob, createRecorder } from './ai.js';
 
 export const SAMPLE_PROMPTS = [
   { en: 'Where did you grow up, and what was it like?', ja: 'どこで育った？ どんなところだった？' },
@@ -10,25 +10,6 @@ export const SAMPLE_PROMPTS = [
 ];
 export const SAMPLE_SECONDS = 60;
 const MIN_DAYS_BETWEEN = 25;
-
-const SAMPLE_SCHEMA = {
-  type: 'object',
-  properties: {
-    level: {
-      type: 'integer',
-      description: '固定ルーブリック 1〜5。1 単語の羅列 / 2 短文が途切れ途切れ / 3 短文で言い切れる / 4 短文をつなげて30秒以上続く / 5 理由や気持ちを添え、質問も返せる',
-    },
-    level_reason_ja: { type: 'string', description: 'そのレベルにした理由。日本語で1〜2文' },
-    total_sentences: { type: 'integer', description: '発話された文の数' },
-    complete_sentences: { type: 'integer', description: '主語と動詞がそろって言い切れた文の数' },
-    stuck_count: { type: 'integer', description: '言い直し・長い沈黙・日本語への逃げ・フィラー（uh, um, えー）の回数' },
-    best_sentence: { type: 'string', description: 'いちばん良かった1文。原文のまま' },
-    tip_ja: { type: 'string', description: '次の1回だけ意識すること。日本語で1つ' },
-    cleaned_transcript: { type: 'string', description: '読みやすく整えた文字起こし。内容は変えない。自信が無い箇所は [?]' },
-  },
-  required: ['level', 'level_reason_ja', 'total_sentences', 'complete_sentences', 'stuck_count', 'best_sentence', 'tip_ja', 'cleaned_transcript'],
-  additionalProperties: false,
-};
 
 export const countWords = (text) => (String(text || '').match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
 
@@ -41,18 +22,7 @@ export function bestOf(samples) {
   };
 }
 
-async function scoreSample(transcript, key) {
-  const system = [
-    'You score a 60-second spoken self-introduction sample by a Japanese Level 1 English learner.',
-    'The learner answered these three prompts in order: ' + SAMPLE_PROMPTS.map((p) => `"${p.en}"`).join(', ') + '.',
-    'Use the fixed 1-5 rubric exactly as described in the schema. Be consistent across months: the same performance must get the same level.',
-    'Count, do not guess: sentences, complete sentences, and stucks (restarts, long pauses, Japanese, fillers).',
-    'Write Japanese notes plainly and positively, but do not inflate the level.',
-    'When suggesting English, follow this style: ' + OYAMA_STYLE,
-  ].join('\n');
-  const user = `Transcript (ASR, learner only):\n"""\n${transcript}\n"""`;
-  return callClaude({ system, user, schema: SAMPLE_SCHEMA, key, maxTokens: 3000 });
-}
+const scoreSample = (transcript) => apiScore({ transcript });
 
 // ---------------------------------------------------------------- UI
 
@@ -157,7 +127,6 @@ export function setupSample(c) {
   $('samplePaste').addEventListener('input', setRunButtons);
 
   $('sampleScore').addEventListener('click', async () => {
-    const keys = ctx.getKeys();
     const state = ctx.state();
     $('sampleScore').disabled = true;
     try {
@@ -165,11 +134,11 @@ export function setupSample(c) {
       const seconds = Math.max(10, Math.min(180, Number($('sampleSeconds').value) || SAMPLE_SECONDS));
       if (!transcript) {
         $('sampleNote').textContent = '文字起こし中…';
-        transcript = await transcribeBlob(st.blob, 'A Japanese learner answers three self-introduction questions in simple English. Mostly English.', keys.openai);
+        transcript = await transcribeBlob(st.blob, 'A Japanese learner answers three self-introduction questions in simple English. Mostly English.');
         $('samplePaste').value = transcript;
       }
       $('sampleNote').textContent = 'Claude が採点中…';
-      const r = await scoreSample(transcript, keys.anthropic);
+      const r = await scoreSample(transcript);
       const words = countWords(r.cleaned_transcript || transcript);
       const wpm = Math.round(words / (seconds / 60));
       const total = Math.max(1, r.total_sentences || 0);

@@ -1,4 +1,4 @@
-// Playwright smoke test — 静的サイトを python の http.server で配信して、スマホ幅で主要フローを通す。
+// Playwright smoke test — 裏方サーバーごと起動し、AI とカンペは /api/* をモックして主要フローを通す。
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
@@ -15,8 +15,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'python3 -m http.server 8790 --bind 127.0.0.1',
-    url: 'http://127.0.0.1:8790/index.html',
+    command: 'PORT=8790 node server/index.js',
+    url: 'http://127.0.0.1:8790/api/health',
     reuseExistingServer: true,
     timeout: 15000,
   },
