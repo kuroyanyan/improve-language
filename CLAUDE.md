@@ -7,6 +7,7 @@
 ## 絶対遵守
 - **GitHub は kuroyanyan 個人アカウントのみ。** japantradingcardcenter には絶対に push しない。日本トレカセンター（JTCC）とは無関係。「JTC」という略称は使わない。
 - **このリポジトリは public。** 個人データ（文字起こし・メモ・ピースの日本語・実戦の内容）と Bizmates の教材本文を入れない。lessons.json はトピック名と Key Phrases だけ。
+- **デプロイ先と環境変数は `docs/RAILWAY.md`。** キーは Railway の環境変数にあり、Claude は扱わない。
 - **規約は `docs/LOOP.md`。** 目的・指標・ガードレール G0〜G11・週次サイクルはそこが唯一のソース。
 - **変更ゼロが既定。1サイクル1変更。** アプリの挙動を変える PR は `docs/hypotheses/H-*.md` を追加か更新する（CI が確認する）。保守は title を `fix:` `chore:` `data:` `docs:` `test:` `ci:` で始める。
 - **merge は黒川さん。** Claude は PR を出すまで。main に直接 push しない。
