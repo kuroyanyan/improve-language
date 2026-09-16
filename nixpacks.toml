@@ -1,0 +1,5 @@
+# ルートに index.html があるため静的サイトと誤検出されることがある。Node で動かすことを明示する。
+providers = ["node"]
+
+[start]
+cmd = "node server/index.js"
