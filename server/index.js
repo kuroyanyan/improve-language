@@ -113,6 +113,12 @@ async function handleApi(req, res, url) {
 
   if (!authed(req)) return send(res, 401, { error: '合言葉を入れてください' });
 
+  // 合言葉が未設定の本番は、お金のかかる口を閉じておく（URL を知る誰かに使われないように）
+  const openToAnyone = process.env.NODE_ENV === 'production' && !process.env.APP_PASSCODE;
+  if (openToAnyone && (p === '/api/transcribe' || p.startsWith('/api/ai/'))) {
+    return send(res, 503, { error: 'APP_PASSCODE が未設定です。Railway の Variables に合言葉を入れると AI が使えます' });
+  }
+
   if (p === '/api/session') return send(res, 200, { ok: true });
 
   if (p === '/api/kanpe' && req.method === 'GET') {
