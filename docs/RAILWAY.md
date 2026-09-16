@@ -28,6 +28,7 @@
 
 ## 落とし穴
 
+- **ビルダーを固定する。** ルートに `index.html` があるため、指定が無いと Railway が「静的サイト」と誤検出し、Node サーバーではなく Caddy でファイル配信してしまう（全 API が 404、ログに `fileserver.notFound` と `Server: Caddy`）。`railway.json` の `build.builder = NIXPACKS` と `nixpacks.toml` の `providers = ["node"]` の両方で明示している。
 - `railway.json` に `buildCommand` を書かない。Nixpacks の install 段階の `npm ci` と衝突し、`node_modules/.cache` の EBUSY でビルドが落ちる（2026-09-16 実測）。ビルド工程は不要。
 - push で自動デプロイされないときは、Railway 側でソースを繋ぎ直すと最新コミットでビルドが走る。
 - 使いすぎ防止として、AI 呼び出しは 1 時間あたり 60 回まで。超えると 429 を返す。
