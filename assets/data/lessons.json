@@ -1,353 +1,689 @@
 {
-  "rank": "C",
   "level": "1",
-  "total": 20,
-  "lessons": [
+  "ranks": [
     {
-      "lesson": 1,
       "rank": "C",
       "level": "1",
-      "topic": "Talking about Yourself",
-      "title": "Lesson 1: Talking about Yourself",
-      "type": "regular",
-      "keyPhrases": [
-        "My job is",
-        "I've been",
-        "I'm into",
-        "Please let me know if",
-        "I look forward to working with you all"
+      "total": 20,
+      "lessons": [
+        {
+          "lesson": 1,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about Yourself",
+          "title": "Lesson 1: Talking about Yourself",
+          "type": "regular",
+          "keyPhrases": [
+            "My job is",
+            "I've been",
+            "I'm into",
+            "Please let me know if",
+            "I look forward to working with you all"
+          ]
+        },
+        {
+          "lesson": 2,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about your Personal Background",
+          "title": "Lesson 2: Talking about your Personal Background",
+          "type": "regular",
+          "keyPhrases": [
+            "I lived",
+            "I moved",
+            "I liked",
+            "I didn't really like",
+            "How about you?"
+          ]
+        },
+        {
+          "lesson": 3,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about your Job",
+          "title": "Lesson 3: Talking about your Job",
+          "type": "regular",
+          "keyPhrases": [
+            "For example,",
+            "Recently,",
+            "So let me know if"
+          ]
+        },
+        {
+          "lesson": 4,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about your Professional Background",
+          "title": "Lesson 4: Talking about your Professional Background",
+          "type": "regular",
+          "keyPhrases": [
+            "I used to",
+            "I learned a lot about",
+            "My biggest accomplishment was"
+          ]
+        },
+        {
+          "lesson": 5,
+          "rank": "C",
+          "level": "1",
+          "topic": "Review: Lessons 1–4",
+          "title": "Lesson 5: Review: Lessons 1–4",
+          "type": "challenge",
+          "keyPhrases": [
+            "My job is",
+            "I've been",
+            "I'm into",
+            "Please let me know if",
+            "I look forward to working with you all",
+            "I lived",
+            "I moved to",
+            "I liked",
+            "I didn't really like",
+            "How about you?",
+            "For example,",
+            "Recently,",
+            "So let me know if",
+            "I used to",
+            "I learned a lot about",
+            "My biggest accomplishment was"
+          ]
+        },
+        {
+          "lesson": 6,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about your Workplace",
+          "title": "Lesson 6: Talking about your Workplace",
+          "type": "regular",
+          "keyPhrases": [
+            "Here, we have",
+            "You can have",
+            "But you can't",
+            "Feel free to"
+          ]
+        },
+        {
+          "lesson": 7,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about Office Rules",
+          "title": "Lesson 7: Talking about Office Rules",
+          "type": "regular",
+          "keyPhrases": [
+            "When you",
+            "have to",
+            "It's so that",
+            "For more details, you can",
+            "if you're not sure how to do it, you can"
+          ]
+        },
+        {
+          "lesson": 8,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about Working Styles",
+          "title": "Lesson 8: Talking about Working Styles",
+          "type": "regular",
+          "keyPhrases": [
+            "we are allowed to",
+            "we are not allowed to",
+            "Most of us",
+            "some of us",
+            "Not many people"
+          ]
+        },
+        {
+          "lesson": 9,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking about Dress Codes",
+          "title": "Lesson 9: Talking about Dress Codes",
+          "type": "regular",
+          "keyPhrases": [
+            "we're supposed to",
+            "I would",
+            "I wouldn't",
+            "In general"
+          ]
+        },
+        {
+          "lesson": 10,
+          "rank": "C",
+          "level": "1",
+          "topic": "Review: Lessons 6–9",
+          "title": "Lesson 10: Review: Lessons 6–9",
+          "type": "challenge",
+          "keyPhrases": [
+            "Here, we have",
+            "But you can't",
+            "Feel free to",
+            "When you",
+            "you have to",
+            "It's so that",
+            "For more details, you can",
+            "If you're not sure how to do it, you can",
+            "We are allowed to",
+            "We are not allowed to",
+            "Most of us",
+            "Some of us",
+            "Not many people",
+            "We're supposed to look",
+            "I would",
+            "I wouldn't",
+            "In general"
+          ]
+        },
+        {
+          "lesson": 11,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking About Your Responsibilities",
+          "title": "Lesson 11: Talking About Your Responsibilities",
+          "type": "regular",
+          "keyPhrases": [
+            "Basically, I'm responsible for",
+            "More specifically, I'm in charge of",
+            "handle",
+            "work closely with",
+            "What I like about my work is that"
+          ]
+        },
+        {
+          "lesson": 12,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking About Your Team",
+          "title": "Lesson 12: Talking About Your Team",
+          "type": "regular",
+          "keyPhrases": [
+            "Our team is responsible for",
+            "That includes",
+            "is in charge of",
+            "So if you have any questions about",
+            "is the person to talk to"
+          ]
+        },
+        {
+          "lesson": 13,
+          "rank": "C",
+          "level": "1",
+          "topic": "Explaining Procedures",
+          "title": "Lesson 13: Explaining Procedures",
+          "type": "regular",
+          "keyPhrases": [
+            "In order to",
+            "First, I need to",
+            "And then, I need to",
+            "after that",
+            "That's how I"
+          ]
+        },
+        {
+          "lesson": 14,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking About Your Workload",
+          "title": "Lesson 14: Talking About Your Workload",
+          "type": "regular",
+          "keyPhrases": [
+            "the most important task is",
+            "The second most important task is",
+            "takes about",
+            "It's important that"
+          ]
+        },
+        {
+          "lesson": 15,
+          "rank": "C",
+          "level": "1",
+          "topic": "Review: Lessons 11–14",
+          "title": "Lesson 15: Review: Lessons 11–14",
+          "type": "challenge",
+          "keyPhrases": [
+            "Basically, I'm responsible for",
+            "More specifically, I'm in charge of",
+            "handle",
+            "work closely with",
+            "What I like about my work is that",
+            "Our team is responsible for",
+            "That includes",
+            "is in charge of",
+            "So if you have any questions about",
+            "is the person to talk to",
+            "In order to",
+            "First, I need to",
+            "And then, I need to",
+            "after that",
+            "That's how I",
+            "the most important task is",
+            "The second most important task is",
+            "takes about",
+            "It's important that"
+          ]
+        },
+        {
+          "lesson": 16,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking About Your Usual Schedule",
+          "title": "Lesson 16: Talking About Your Usual Schedule",
+          "type": "regular",
+          "keyPhrases": [
+            "During the week, I mostly",
+            "I'm usually busy on",
+            "On a typical day",
+            "in the morning",
+            "In the afternoon",
+            "But sometimes,"
+          ]
+        },
+        {
+          "lesson": 17,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking About Deadlines",
+          "title": "Lesson 17: Talking About Deadlines",
+          "type": "regular",
+          "keyPhrases": [
+            "I have been working on",
+            "I need to get it done by",
+            "It's due",
+            "I'll try to get everything done in time"
+          ]
+        },
+        {
+          "lesson": 18,
+          "rank": "C",
+          "level": "1",
+          "topic": "Reporting the Status of Your Work",
+          "title": "Lesson 18: Reporting the Status of Your Work",
+          "type": "regular",
+          "keyPhrases": [
+            "I was working on",
+            "I was able to finish",
+            "I haven't been able to",
+            "I'm having trouble",
+            "I will"
+          ]
+        },
+        {
+          "lesson": 19,
+          "rank": "C",
+          "level": "1",
+          "topic": "Talking About Weekend Plans",
+          "title": "Lesson 19: Talking About Weekend Plans",
+          "type": "regular",
+          "keyPhrases": [
+            "I'm thinking of",
+            "I don't have anything planned",
+            "I might",
+            "But the forecast says",
+            "If it rains, I think I'll",
+            "What about you?"
+          ]
+        },
+        {
+          "lesson": 20,
+          "rank": "C",
+          "level": "1",
+          "topic": "Review: Lessons 16–19",
+          "title": "Lesson 20: Review: Lessons 16–19",
+          "type": "challenge",
+          "keyPhrases": [
+            "During the week, I mostly",
+            "I'm usually busy on",
+            "On a typical day",
+            "in the morning",
+            "In the afternoon",
+            "But sometimes,",
+            "I have been working on",
+            "I need to get it done by",
+            "It's due",
+            "I'll try to get everything done in time",
+            "I was working on",
+            "I was able to finish",
+            "I haven't been able to",
+            "I'm having trouble",
+            "I will ask",
+            "I'm thinking of",
+            "I don't have anything planned",
+            "I might",
+            "But the forecast says",
+            "If it rains, I think I'll",
+            "What about you?"
+          ]
+        }
       ]
     },
     {
-      "lesson": 2,
-      "rank": "C",
+      "rank": "D",
       "level": "1",
-      "topic": "Talking about your Personal Background",
-      "title": "Lesson 2: Talking about your Personal Background",
-      "type": "regular",
-      "keyPhrases": [
-        "I lived",
-        "I moved",
-        "I liked",
-        "I didn't really like",
-        "How about you?"
-      ]
-    },
-    {
-      "lesson": 3,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking about your Job",
-      "title": "Lesson 3: Talking about your Job",
-      "type": "regular",
-      "keyPhrases": [
-        "For example,",
-        "Recently,",
-        "So let me know if"
-      ]
-    },
-    {
-      "lesson": 4,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking about your Professional Background",
-      "title": "Lesson 4: Talking about your Professional Background",
-      "type": "regular",
-      "keyPhrases": [
-        "I used to",
-        "I learned a lot about",
-        "My biggest accomplishment was"
-      ]
-    },
-    {
-      "lesson": 5,
-      "rank": "C",
-      "level": "1",
-      "topic": "Review: Lessons 1–4",
-      "title": "Lesson 5: Review: Lessons 1–4",
-      "type": "challenge",
-      "keyPhrases": [
-        "My job is",
-        "I've been",
-        "I'm into",
-        "Please let me know if",
-        "I look forward to working with you all",
-        "I lived",
-        "I moved to",
-        "I liked",
-        "I didn't really like",
-        "How about you?",
-        "For example,",
-        "Recently,",
-        "So let me know if",
-        "I used to",
-        "I learned a lot about",
-        "My biggest accomplishment was"
-      ]
-    },
-    {
-      "lesson": 6,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking about your Workplace",
-      "title": "Lesson 6: Talking about your Workplace",
-      "type": "regular",
-      "keyPhrases": [
-        "Here, we have",
-        "You can have",
-        "But you can't",
-        "Feel free to"
-      ]
-    },
-    {
-      "lesson": 7,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking about Office Rules",
-      "title": "Lesson 7: Talking about Office Rules",
-      "type": "regular",
-      "keyPhrases": [
-        "When you",
-        "have to",
-        "It's so that",
-        "For more details, you can",
-        "if you're not sure how to do it, you can"
-      ]
-    },
-    {
-      "lesson": 8,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking about Working Styles",
-      "title": "Lesson 8: Talking about Working Styles",
-      "type": "regular",
-      "keyPhrases": [
-        "we are allowed to",
-        "we are not allowed to",
-        "Most of us",
-        "some of us",
-        "Not many people"
-      ]
-    },
-    {
-      "lesson": 9,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking about Dress Codes",
-      "title": "Lesson 9: Talking about Dress Codes",
-      "type": "regular",
-      "keyPhrases": [
-        "we're supposed to",
-        "I would",
-        "I wouldn't",
-        "In general"
-      ]
-    },
-    {
-      "lesson": 10,
-      "rank": "C",
-      "level": "1",
-      "topic": "Review: Lessons 6–9",
-      "title": "Lesson 10: Review: Lessons 6–9",
-      "type": "challenge",
-      "keyPhrases": [
-        "Here, we have",
-        "But you can't",
-        "Feel free to",
-        "When you",
-        "you have to",
-        "It's so that",
-        "For more details, you can",
-        "If you're not sure how to do it, you can",
-        "We are allowed to",
-        "We are not allowed to",
-        "Most of us",
-        "Some of us",
-        "Not many people",
-        "We're supposed to look",
-        "I would",
-        "I wouldn't",
-        "In general"
-      ]
-    },
-    {
-      "lesson": 11,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking About Your Responsibilities",
-      "title": "Lesson 11: Talking About Your Responsibilities",
-      "type": "regular",
-      "keyPhrases": [
-        "Basically, I'm responsible for",
-        "More specifically, I'm in charge of",
-        "handle",
-        "work closely with",
-        "What I like about my work is that"
-      ]
-    },
-    {
-      "lesson": 12,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking About Your Team",
-      "title": "Lesson 12: Talking About Your Team",
-      "type": "regular",
-      "keyPhrases": [
-        "Our team is responsible for",
-        "That includes",
-        "is in charge of",
-        "So if you have any questions about",
-        "is the person to talk to"
-      ]
-    },
-    {
-      "lesson": 13,
-      "rank": "C",
-      "level": "1",
-      "topic": "Explaining Procedures",
-      "title": "Lesson 13: Explaining Procedures",
-      "type": "regular",
-      "keyPhrases": [
-        "In order to",
-        "First, I need to",
-        "And then, I need to",
-        "after that",
-        "That's how I"
-      ]
-    },
-    {
-      "lesson": 14,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking About Your Workload",
-      "title": "Lesson 14: Talking About Your Workload",
-      "type": "regular",
-      "keyPhrases": [
-        "the most important task is",
-        "The second most important task is",
-        "takes about",
-        "It's important that"
-      ]
-    },
-    {
-      "lesson": 15,
-      "rank": "C",
-      "level": "1",
-      "topic": "Review: Lessons 11–14",
-      "title": "Lesson 15: Review: Lessons 11–14",
-      "type": "challenge",
-      "keyPhrases": [
-        "Basically, I'm responsible for",
-        "More specifically, I'm in charge of",
-        "handle",
-        "work closely with",
-        "What I like about my work is that",
-        "Our team is responsible for",
-        "That includes",
-        "is in charge of",
-        "So if you have any questions about",
-        "is the person to talk to",
-        "In order to",
-        "First, I need to",
-        "And then, I need to",
-        "after that",
-        "That's how I",
-        "the most important task is",
-        "The second most important task is",
-        "takes about",
-        "It's important that"
-      ]
-    },
-    {
-      "lesson": 16,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking About Your Usual Schedule",
-      "title": "Lesson 16: Talking About Your Usual Schedule",
-      "type": "regular",
-      "keyPhrases": [
-        "During the week, I mostly",
-        "I'm usually busy on",
-        "On a typical day",
-        "in the morning",
-        "In the afternoon",
-        "But sometimes,"
-      ]
-    },
-    {
-      "lesson": 17,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking About Deadlines",
-      "title": "Lesson 17: Talking About Deadlines",
-      "type": "regular",
-      "keyPhrases": [
-        "I have been working on",
-        "I need to get it done by",
-        "It's due",
-        "I'll try to get everything done in time"
-      ]
-    },
-    {
-      "lesson": 18,
-      "rank": "C",
-      "level": "1",
-      "topic": "Reporting the Status of Your Work",
-      "title": "Lesson 18: Reporting the Status of Your Work",
-      "type": "regular",
-      "keyPhrases": [
-        "I was working on",
-        "I was able to finish",
-        "I haven't been able to",
-        "I'm having trouble",
-        "I will"
-      ]
-    },
-    {
-      "lesson": 19,
-      "rank": "C",
-      "level": "1",
-      "topic": "Talking About Weekend Plans",
-      "title": "Lesson 19: Talking About Weekend Plans",
-      "type": "regular",
-      "keyPhrases": [
-        "I'm thinking of",
-        "I don't have anything planned",
-        "I might",
-        "But the forecast says",
-        "If it rains, I think I'll",
-        "What about you?"
-      ]
-    },
-    {
-      "lesson": 20,
-      "rank": "C",
-      "level": "1",
-      "topic": "Review: Lessons 16–19",
-      "title": "Lesson 20: Review: Lessons 16–19",
-      "type": "challenge",
-      "keyPhrases": [
-        "During the week, I mostly",
-        "I'm usually busy on",
-        "On a typical day",
-        "in the morning",
-        "In the afternoon",
-        "But sometimes,",
-        "I have been working on",
-        "I need to get it done by",
-        "It's due",
-        "I'll try to get everything done in time",
-        "I was working on",
-        "I was able to finish",
-        "I haven't been able to",
-        "I'm having trouble",
-        "I will ask",
-        "I'm thinking of",
-        "I don't have anything planned",
-        "I might",
-        "But the forecast says",
-        "If it rains, I think I'll",
-        "What about you?"
+      "total": 20,
+      "lessons": [
+        {
+          "lesson": 1,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Your Company and Its Businesses",
+          "title": "Lesson 1: Talking About Your Company and Its Businesses",
+          "type": "regular",
+          "keyPhrases": [
+            "range from … to",
+            "Our headquarters are",
+            "we have subsidiaries in",
+            "We have a total of"
+          ]
+        },
+        {
+          "lesson": 2,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About the Vision and Mission",
+          "title": "Lesson 2: Talking About the Vision and Mission",
+          "type": "regular",
+          "keyPhrases": [
+            "Our vision statement is",
+            "our mission is",
+            "In other words",
+            "my job is to",
+            "so that"
+          ]
+        },
+        {
+          "lesson": 3,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Your Company's History",
+          "title": "Lesson 3: Talking About Your Company's History",
+          "type": "regular",
+          "keyPhrases": [
+            "We started as",
+            "It was founded by",
+            "One of our biggest milestones was",
+            "Another big milestone was",
+            "Our next goal is to"
+          ]
+        },
+        {
+          "lesson": 4,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Strengths and Weaknesses",
+          "title": "Lesson 4: Talking About Strengths and Weaknesses",
+          "type": "regular",
+          "keyPhrases": [
+            "known for",
+            "is not our strength, but",
+            "We are now"
+          ]
+        },
+        {
+          "lesson": 5,
+          "rank": "D",
+          "level": "1",
+          "topic": "Review: Lessons 1–4",
+          "title": "Lesson 5: Review: Lessons 1–4",
+          "type": "challenge",
+          "keyPhrases": [
+            "range from … to",
+            "Our headquarters are",
+            "we have subsidiaries in",
+            "We have a total of",
+            "Our vision statement is",
+            "our mission is",
+            "In other words",
+            "my job is to",
+            "so that",
+            "We started as",
+            "It was founded by",
+            "One of our biggest milestones was",
+            "Another big milestone was",
+            "Our next goal is to",
+            "known for",
+            "is not our strength, but",
+            "We are now"
+          ]
+        },
+        {
+          "lesson": 6,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About the Market",
+          "title": "Lesson 6: Talking About the Market",
+          "type": "regular",
+          "keyPhrases": [
+            "Our market is valued at",
+            "this is a growing market",
+            "We segment the market into",
+            "This is the type of customer who"
+          ]
+        },
+        {
+          "lesson": 7,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Your Products",
+          "title": "Lesson 7: Talking About Your Products",
+          "type": "regular",
+          "keyPhrases": [
+            "One of our main services is called",
+            "It's basically",
+            "One key feature is",
+            "It's attractive because"
+          ]
+        },
+        {
+          "lesson": 8,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About the Competition",
+          "title": "Lesson 8: Talking About the Competition",
+          "type": "regular",
+          "keyPhrases": [
+            "one of our major competitors is",
+            "Another major competitor is",
+            "have an advantage in terms of",
+            "-er than",
+            "more … than"
+          ]
+        },
+        {
+          "lesson": 9,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Brand Image",
+          "title": "Lesson 9: Talking About Brand Image",
+          "type": "regular",
+          "keyPhrases": [
+            "consider … to be",
+            "is loved by",
+            "In fact"
+          ]
+        },
+        {
+          "lesson": 10,
+          "rank": "D",
+          "level": "1",
+          "topic": "Review: Lessons 6–9",
+          "title": "Lesson 10: Review: Lessons 6–9",
+          "type": "challenge",
+          "keyPhrases": [
+            "Our market is valued at",
+            "this is a growing market",
+            "We segment the market into",
+            "This is the type of customer who",
+            "One of our main services is called",
+            "It's basically",
+            "One key feature is",
+            "It's attractive because",
+            "one of our major competitors is",
+            "Another major competitor is",
+            "have an advantage in terms of",
+            "-er than",
+            "more … than",
+            "consider … to be",
+            "is loved by",
+            "In fact"
+          ]
+        },
+        {
+          "lesson": 11,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Problems",
+          "title": "Lesson 11: Talking About Problems",
+          "type": "regular",
+          "keyPhrases": [
+            "Recently, I've been having a hard time",
+            "I think it's because",
+            "I guess I need to"
+          ]
+        },
+        {
+          "lesson": 12,
+          "rank": "D",
+          "level": "1",
+          "topic": "Seeking Advice",
+          "title": "Lesson 12: Seeking Advice",
+          "type": "regular",
+          "keyPhrases": [
+            "Recently, I've been having trouble",
+            "I've tried",
+            "but it didn't work",
+            "I know you have a lot of experience",
+            "Could you give me some advice?"
+          ]
+        },
+        {
+          "lesson": 13,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Stress",
+          "title": "Lesson 13: Talking About Stress",
+          "type": "regular",
+          "keyPhrases": [
+            "burned-out",
+            "I wish"
+          ]
+        },
+        {
+          "lesson": 14,
+          "rank": "D",
+          "level": "1",
+          "topic": "Talking About Motivation",
+          "title": "Lesson 14: Talking About Motivation",
+          "type": "regular",
+          "keyPhrases": [
+            "I feel motivated when",
+            "The other day"
+          ]
+        },
+        {
+          "lesson": 15,
+          "rank": "D",
+          "level": "1",
+          "topic": "Review: Lessons 11–14",
+          "title": "Lesson 15: Review: Lessons 11–14",
+          "type": "challenge",
+          "keyPhrases": [
+            "Recently, I've been having a hard time",
+            "I think it's because",
+            "I guess I need to",
+            "Recently, I've been having trouble",
+            "I've tried",
+            "but it didn't work",
+            "I know you have a lot of experience",
+            "Could you give me some advice?",
+            "burned-out",
+            "I wish",
+            "I feel motivated when",
+            "The other day"
+          ]
+        },
+        {
+          "lesson": 16,
+          "rank": "D",
+          "level": "1",
+          "topic": "Explaining Unofficial Rules",
+          "title": "Lesson 16: Explaining Unofficial Rules",
+          "type": "regular",
+          "keyPhrases": [
+            "Whenever you",
+            "you should always",
+            "Make sure"
+          ]
+        },
+        {
+          "lesson": 17,
+          "rank": "D",
+          "level": "1",
+          "topic": "Giving Guidance",
+          "title": "Lesson 17: Giving Guidance",
+          "type": "regular",
+          "keyPhrases": [
+            "You might want to",
+            "I think it will be a good idea to",
+            "That way",
+            "Why don't you try that and see how it goes?"
+          ]
+        },
+        {
+          "lesson": 18,
+          "rank": "D",
+          "level": "1",
+          "topic": "Giving Praise",
+          "title": "Lesson 18: Giving Praise",
+          "type": "regular",
+          "keyPhrases": [
+            "I'm glad",
+            "It's good that",
+            "Congratulations",
+            "keep up the good work"
+          ]
+        },
+        {
+          "lesson": 19,
+          "rank": "D",
+          "level": "1",
+          "topic": "Giving Encouragement",
+          "title": "Lesson 19: Giving Encouragement",
+          "type": "regular",
+          "keyPhrases": [
+            "I know how it feels",
+            "It doesn't feel great when",
+            "I've been there too",
+            "It happens",
+            "Don't worry",
+            "I'm sure"
+          ]
+        },
+        {
+          "lesson": 20,
+          "rank": "D",
+          "level": "1",
+          "topic": "Review: Lessons 16–19",
+          "title": "Lesson 20: Review: Lessons 16–19",
+          "type": "challenge",
+          "keyPhrases": [
+            "Whenever you",
+            "you should always",
+            "Make sure",
+            "You might want to",
+            "I think it will be a good idea to",
+            "That way",
+            "Why don't you try that and see how it goes?",
+            "I'm glad",
+            "It's good that",
+            "Congratulations",
+            "keep up the good work",
+            "I know how it feels",
+            "It doesn't feel great when",
+            "I've been there too",
+            "It happens",
+            "Don't worry",
+            "I'm sure"
+          ]
+        }
       ]
     }
   ]

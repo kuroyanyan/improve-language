@@ -1,0 +1,19 @@
+{
+  "name": "bizmates-log",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bizmates Log — 自分の話を英語で言えるようにする学習ログ（アプリ＋小さな裏方サーバー）",
+  "type": "module",
+  "scripts": {
+    "serve": "node server/index.js",
+    "check": "node --check assets/app.js && node --check assets/ai.js && node --check assets/api.js && node --check assets/pieces.js && node --check assets/sample.js && node --check assets/sync.js && node --check assets/kanpe.js && node --check server/index.js && node --check server/claude.js && node --check server/store.js && node -e \"JSON.parse(require('fs').readFileSync('assets/data/lessons.json','utf8'))\" && echo syntax OK",
+    "test": "playwright test",
+    "start": "node server/index.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

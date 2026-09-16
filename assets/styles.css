@@ -15,7 +15,7 @@
   --warn-bg: #f6e8da;
   --danger: #b3261e;
   --shadow: 0 1px 2px rgba(34, 48, 60, 0.06), 0 8px 24px rgba(34, 48, 60, 0.06);
-  --nav-h: 62px;
+  --nav-h: 0px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -82,7 +82,7 @@ h1, h2, h3 { font-family: "Lora", Georgia, serif; }
 .app {
   max-width: 680px;
   margin: 0 auto;
-  padding: 0 16px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
+  padding: 0 16px calc(env(safe-area-inset-bottom) + 40px);
 }
 
 .topbar {
@@ -91,10 +91,12 @@ h1, h2, h3 { font-family: "Lora", Georgia, serif; }
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 20px 0 14px;
+  padding: 16px 0 14px;
+  gap: 12px;
+  align-items: center;
 }
 
-.topbar h1 { font-size: 1.15rem; margin: 0; letter-spacing: 0.01em; }
+.topbar h1 { font-size: 1.15rem; margin: 0; letter-spacing: 0.01em; flex: 1 1 auto; }
 
 .topbar .sub {
   font-size: 0.76rem;
@@ -200,8 +202,10 @@ button:disabled { opacity: 0.45; cursor: default; }
 .row.tight { gap: 6px; }
 
 /* レッスン選択 */
-.lessonpick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.lessonpick select { flex: 1 1 200px; width: auto; }
+.lessonpick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.lessonpick select { flex: 1 1 200px; width: auto; min-width: 0; max-width: 100%; }
+select { text-overflow: ellipsis; }
+.app, .card { min-width: 0; }
 
 .badge {
   display: inline-block;
@@ -376,56 +380,47 @@ details.log summary .when { font-size: 0.8rem; color: var(--muted); font-weight:
 details.log .inner { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 details.log h4 { margin: 0; font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
-/* ---------- 下タブ ---------- */
+/* ---------- ☰ メニューとドロワー ---------- */
 
-.nav {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
+.menubtn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  font-size: 1.2rem; line-height: 1; padding: 6px 12px; min-height: 40px; border-radius: 9px;
 }
+.menubtn:hover { border-color: var(--accent); color: var(--accent); }
+.topbar h1 .where { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 0.86rem; font-weight: 500; color: var(--muted); margin-left: 10px; }
 
-.nav button {
-  border: none;
-  border-radius: 0;
-  background: none;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  min-height: var(--nav-h);
-  padding: 8px 2px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-}
+.backdrop { position: fixed; inset: 0; background: rgba(16, 23, 30, 0.35); z-index: 25; }
+.backdrop[hidden] { display: none; }
 
-.nav button .ico { font-size: 1.18rem; line-height: 1; }
-.nav button[aria-current="page"] { color: var(--accent); }
-.nav button .dot {
-  position: absolute;
-  transform: translate(15px, -13px);
-  min-width: 17px;
-  height: 17px;
-  border-radius: 99px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.64rem;
-  line-height: 17px;
-  padding: 0 4px;
+.drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; width: min(320px, 86vw);
+  background: var(--surface); border-right: 1px solid var(--border); box-shadow: var(--shadow);
+  z-index: 30; display: flex; flex-direction: column; gap: 4px; padding: 14px 12px 20px; overflow-y: auto;
 }
+.drawer[hidden] { display: none; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 10px; }
+.drawer-title { font-family: "Lora", Georgia, serif; font-weight: 700; font-size: 1.05rem; }
+.drawer button[data-view] {
+  position: relative; display: flex; align-items: center; gap: 12px; text-align: left;
+  border: 1px solid transparent; background: none; color: var(--ink); border-radius: 10px; padding: 10px 12px; min-height: 52px;
+}
+.drawer button[data-view]:hover { background: var(--say-bg); border-color: var(--border); }
+.drawer button[data-view][aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.drawer button[data-view] .ico { font-size: 1.25rem; line-height: 1; width: 26px; text-align: center; }
+.drawer button[data-view] .lbl { display: flex; flex-direction: column; gap: 1px; font-size: 0.98rem; }
+.drawer button[data-view] .lbl small { font-size: 0.74rem; font-weight: 500; color: var(--muted); }
+.drawer button[data-view] .dot {
+  margin-left: auto; min-width: 20px; height: 20px; border-radius: 99px; background: var(--accent); color: #fff;
+  font-size: 0.7rem; line-height: 20px; text-align: center; padding: 0 6px;
+}
+body.menu-open { overflow: hidden; }
 
 /* ---------- トースト ---------- */
 
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
   transform: translateX(-50%) translateY(8px);
   z-index: 20;
   background: var(--ink);
@@ -472,3 +467,187 @@ footer.foot a { color: var(--muted); }
   .stats { grid-template-columns: repeat(3, 1fr); }
   .timer .clock { font-size: 2.9rem; }
 }
+
+/* ---------- v1: ランク切替・ピース・宣言の回収・サンプル・記録証・同期 ---------- */
+
+.rankbar { display: flex; align-items: baseline; gap: 8px; }
+.rankpick {
+  font-family: inherit; font-size: 0.8rem; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid transparent; border-radius: 99px;
+  padding: 3px 26px 3px 10px; min-height: 0; width: auto;
+}
+.rankpick[hidden] { display: none; }
+
+.seg.five { grid-template-columns: repeat(5, 1fr); }
+.seg.five button { font-size: 0.82rem; padding: 9px 2px; }
+
+ul.items li.piece { align-items: stretch; }
+ul.items li.piece .en { white-space: pre-line; }
+ul.items li.piece.grad { border-color: var(--ok-ink); }
+ul.items li.piece .col { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+
+.cue.piece { border-left-color: var(--ok-ink); }
+.cue.piece .top { display: block; font-size: 0.86rem; color: var(--muted); white-space: pre-line; margin-bottom: 6px; line-height: 1.6; }
+.cue.piece .en { display: block; white-space: pre-line; font-weight: 700; line-height: 1.7; }
+
+.declared { display: flex; flex-direction: column; gap: 8px; }
+.declared .item {
+  border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px;
+  background: var(--say-bg); display: grid; gap: 6px;
+}
+.declared .item .en { font-weight: 700; white-space: pre-line; line-height: 1.6; }
+.declared .item .ja { font-size: 0.84rem; color: var(--muted); }
+.declared .item .pair { display: grid; grid-template-columns: 1fr 1.4fr; gap: 6px; margin-top: 4px; }
+.declared .item .pair button { border-color: var(--border); color: var(--muted); font-size: 0.9rem; padding: 10px 6px; }
+.declared .item .pair button.yes[aria-pressed="true"] { border-color: var(--ok-ink); color: var(--ok-ink); background: var(--ok-bg); }
+.declared .item .pair button.no[aria-pressed="true"] { border-color: var(--warn-ink); color: var(--warn-ink); background: var(--warn-bg); }
+
+.stats.four { grid-template-columns: repeat(4, 1fr); }
+.stats.four .stat .n { font-size: 1.3rem; }
+.stats.four .stat .k { font-size: 0.62rem; letter-spacing: 0; white-space: nowrap; }
+
+.sampletimer {
+  font-family: "Lora", Georgia, serif; font-size: 2.6rem; font-weight: 700; text-align: center;
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+ol.prompts { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; font-weight: 700; }
+ol.prompts li .ja { display: block; font-size: 0.84rem; color: var(--muted); font-weight: 400; }
+.best { margin: 0; font-family: "Lora", Georgia, serif; font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+input[type="number"] { max-width: 140px; }
+
+@media (max-width: 380px) {
+  .stats.four { grid-template-columns: repeat(2, 1fr); }
+  .seg.five { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* ---------- PC 前提の幅、5タブ ---------- */
+.app { max-width: 760px; }
+@media (min-width: 1100px) { .app { max-width: 960px; } }
+details.log .inner h4 { margin-top: 6px; }
+
+/* ---------- カンペ（旧・朝プレップと同じ見た目） ---------- */
+.kanpe { display: flex; flex-direction: column; gap: 14px; }
+.kanpe .common { display: none; }
+.kanpe .lesson-head { border-top: 2px solid var(--accent); padding-top: 12px; display: flex; flex-direction: column; gap: 3px; }
+.kanpe .lesson-head.ch { border-top-color: var(--warn-ink); }
+.kanpe .lesson-num { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0; }
+.kanpe .lesson-head.ch .lesson-num { color: var(--warn-ink); }
+.kanpe .lesson-head h2 { font-family: "Lora", Georgia, serif; font-size: 1.32rem; line-height: 1.3; margin: 0; }
+.kanpe .lesson-head .sub { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.kanpe section.card { gap: 12px; }
+.kanpe .card > h3 {
+  font-family: "Lora", Georgia, serif; font-size: 0.95rem; letter-spacing: 0.16em; text-transform: uppercase;
+  margin: 0; color: var(--accent); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.kanpe .card > h3 .jp { font-family: "Zen Kaku Gothic New", sans-serif; letter-spacing: 0; text-transform: none; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+.kanpe .chip { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 0.76rem; font-weight: 700; white-space: nowrap; }
+.kanpe .chip.rule { color: var(--warn-ink); background: var(--warn-bg); }
+.kanpe .chip.real { color: var(--accent); background: var(--accent-soft); }
+.kanpe .chip.wrap { color: var(--ok-ink); background: var(--ok-bg); }
+.kanpe .flow { display: flex; flex-direction: column; gap: 10px; }
+.kanpe .flow .step { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; padding: 0; border: none; background: none; }
+.kanpe .flow .step .chip { justify-self: start; margin-top: 2px; }
+.kanpe .flow .step p { margin: 0; }
+.kanpe .flow .en { font-weight: 700; }
+.kanpe .flow .note { color: var(--muted); font-size: 0.84rem; }
+.kanpe .say { background: var(--say-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.kanpe .say .label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; color: var(--ok-ink); text-transform: uppercase; display: block; margin-bottom: 4px; }
+.kanpe .say p { margin: 0 0 8px; font-size: 1.04rem; line-height: 1.75; }
+.kanpe .say p:last-child { margin-bottom: 0; }
+.kanpe .say b, .kanpe .flow b, .kanpe .kp b, .kanpe .qa b, .kanpe .mini b { color: var(--accent); }
+.kanpe .say p.tr { font-size: 0.86rem; line-height: 1.6; color: var(--muted); font-weight: 400; margin: -6px 0 10px; }
+.kanpe .say p.tr:last-child { margin-bottom: 0; }
+.kanpe ul.kp { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.kanpe ul.kp li { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.kanpe ul.kp .en { font-weight: 700; font-size: 1.02rem; color: var(--accent); }
+.kanpe ul.kp .jp { color: var(--muted); font-size: 0.86rem; }
+.kanpe .persona { font-size: 0.85rem; color: var(--muted); margin: 0; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.kanpe .persona strong { color: var(--ink); font-size: 0.92rem; }
+.kanpe ol.qa { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 11px; }
+.kanpe ol.qa .q { font-weight: 700; }
+.kanpe ol.qa .q .jp { font-weight: 500; color: var(--muted); font-size: 0.84rem; }
+.kanpe ol.qa p { margin: 2px 0 0; }
+.kanpe ol.qa p.tr { font-size: 0.83rem; color: var(--muted); font-weight: 400; margin: 1px 0 0; }
+.kanpe .blank { border-bottom: 2px dotted var(--accent); font-weight: 700; padding: 0 2px; }
+.kanpe table.mini { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+.kanpe table.mini td { padding: 6px 8px 6px 0; vertical-align: top; border-bottom: 1px solid var(--border); }
+.kanpe table.mini tr:last-child td { border-bottom: none; }
+.kanpe table.mini td:first-child { font-weight: 700; color: var(--accent); width: 45%; }
+.kanpe table.mini .tr { display: block; font-size: 0.78rem; font-weight: 400; margin-top: 2px; color: var(--muted); }
+.kanpe .scroller { overflow-x: auto; }
+.kanpe .tips { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 5px; font-size: 0.9rem; }
+.kanpe .tips li b { color: var(--accent); }
+.kanpe .goal { color: var(--muted); font-size: 0.92rem; margin: 0; }
+.kanpe .totop { display: none; }
+
+/* ---------- 録音中の表示と、合言葉のゲート ---------- */
+.reclive {
+  font-size: 0.8rem; font-weight: 700; color: var(--danger);
+  background: var(--warn-bg); border-radius: 99px; padding: 3px 10px; white-space: nowrap;
+}
+.reclive[hidden] { display: none; }
+.gate { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.gate[hidden] { display: none; }
+.gate-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 24px; width: min(360px, 100%); display: flex; flex-direction: column; gap: 12px;
+}
+.gate-card h2 { font-family: "Lora", Georgia, serif; font-size: 1.2rem; margin: 0; }
+
+/* ---------- 今日の流れ（カンペ → 記録 → 5分予習） ---------- */
+.flow {
+  display: flex; align-items: stretch; gap: 6px; margin: 0 0 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px;
+}
+.flow .farrow { align-self: center; color: var(--muted); font-size: 0.9rem; }
+.fstep {
+  flex: 1 1 0; display: flex; align-items: center; gap: 9px; text-align: left;
+  border: 1px solid transparent; background: none; color: var(--muted); border-radius: 9px; padding: 8px 10px; min-height: 48px;
+}
+.fstep:hover { background: var(--say-bg); }
+.fstep .n {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center;
+  background: var(--border); color: var(--surface); font-size: 0.74rem; font-weight: 700;
+}
+.fstep .t { display: flex; flex-direction: column; gap: 1px; font-size: 0.92rem; font-weight: 700; color: var(--ink); }
+.fstep .t small { font-size: 0.72rem; font-weight: 500; color: var(--muted); }
+.fstep.done .n { background: var(--ok-ink); }
+.fstep.done .t { color: var(--muted); }
+.fstep.next { border-color: var(--accent); background: var(--accent-soft); }
+.fstep.next .n { background: var(--accent); }
+.fstep.now .n { background: var(--accent); }
+.fstep.now .t { color: var(--accent); }
+.flow.all-done .fstep .n { background: var(--ok-ink); }
+@media (max-width: 700px) {
+  .flow { flex-wrap: wrap; }
+  .flow .farrow { display: none; }
+  .fstep { flex: 1 1 100%; }
+}
+
+/* ---------- 5分予習: 読むものを全部出す ---------- */
+.prepbar {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  padding: 8px 0 10px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border);
+}
+.prepbar-main { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.prepbar .clock { font-family: "Lora", Georgia, serif; font-size: 2rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.prepbar .total { font-size: 0.82rem; color: var(--muted); }
+.prepbar .row > * { flex: 0 1 auto; }
+.prepsec { transition: border-color 0.2s, box-shadow 0.2s; scroll-margin-top: 120px; }
+.prepsec.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.prepsec.done { opacity: 0.6; }
+.prepsec > h2 .no {
+  display: inline-flex; width: 24px; height: 24px; border-radius: 7px; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 0.8rem; margin-right: 8px;
+}
+.prepsec.done > h2 .no { background: var(--ok-ink); }
+.prow { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--say-bg); }
+.prow + .prow { margin-top: 8px; }
+.prow .ja { color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+.prow .en { font-weight: 700; font-size: 1.1rem; line-height: 1.6; color: var(--accent); }
+@media (max-width: 600px) { .prow { grid-template-columns: 1fr; gap: 4px; } }
+.cue.piece.big { font-size: 1.15rem; }
+.cue.piece.big .top { font-size: 0.95rem; }
+.kanpe.inline { gap: 12px; }
+.kanpe.inline section.card { border: none; padding: 0; background: none; }
+.kanpe.inline .card > h3 { font-size: 0.8rem; }
