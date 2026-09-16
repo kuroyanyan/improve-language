@@ -1,19 +1,19 @@
 // Bizmates Log — レッスン後の記録と、次回の5分予習。
 // 保存先は localStorage だけ。バックエンドもビルドも無し。
 
-import { setupAI } from './ai.js';
+import { setupAI, pieceToEnglish } from './ai.js';
 import { setupGate, ensureSession } from './api.js';
-import { setupPieces, renderPieces, pickTodayPiece, recordPieceResult, activePieces, graduatedPieces, firstLine, lines as pieceLines } from './pieces.js';
+import { setupPieces, renderPieces, pickTodayPiece, recordPieceResult, activePieces, graduatedPieces, firstLine, validatePiece, lines as pieceLines } from './pieces.js';
 import { setupSample, renderSampleSummary, bestOf } from './sample.js';
 import { setupSync, scheduleSync, renderSyncStatus, mondayOf, loadRemoteState, syncNow } from './sync.js';
-import { setupKanpe, openKanpe, syncKanpeRank } from './kanpe.js';
+import { setupKanpe, openKanpe, renderKanpe, syncKanpeRank, getKanpe, extractKanpeSections } from './kanpe.js';
 
 const STORAGE_KEY = 'bizmates-log/v1';
 const PREP_STEPS = [
-  { title: '前回つまずいたところ', seconds: 60, desc: '日本語を見て、英語を声に出す。出なければ答えを読む。' },
-  { title: '今日の Key Phrases', seconds: 60, desc: '2回ずつ音読する。意味より先に口を慣らす。' },
-  { title: '今日のピースを宣言', seconds: 120, desc: '日本語を見て英語を声に出す。3回言えたら見ずに。これを今日のフリートークで言うと決める。' },
-  { title: '単語カード', seconds: 60, desc: '日本語を見て英語。出なければ答えを見て、そのまま1回言う。' },
+  { title: '前回の詰まり', seconds: 60 },
+  { title: '今日の型と Key Phrases', seconds: 60 },
+  { title: 'Act の想定問答', seconds: 120 },
+  { title: '単語カード', seconds: 60 },
 ];
 const TALK_CHOICES = [0, 5, 10, 15, 20];
 const PREP_TOTAL = PREP_STEPS.reduce((n, s) => n + s.seconds, 0);
@@ -64,6 +64,14 @@ function toast(msg) {
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/** 履歴・宣言の表示で使う「英文＋補足」の1ブロック。 */
+function cueBlock(main, sub) {
+  const p = el('p', 'cue');
+  p.appendChild(document.createTextNode(main));
+  if (sub) p.appendChild(el('span', 'ja', sub));
+  return p;
 }
 
 function buzz(pattern) {
@@ -504,105 +512,134 @@ function saveSession() {
 }
 
 // ---------------------------------------------------------------- 5分予習タブ
+// 読むものは最初から全部画面に出す。タイマーは任意のペースメーカー。
+// 3番目が本体: 次回の Act で聞かれることに、日本語で答えて英語にし、「次回これを言う」と決める。
 
-const prep = { running: false, stepIndex: 0, stepLeft: 0, totalLeft: PREP_TOTAL, timer: null, tickAt: 0, sentence: '', pieceId: null };
+const prep = { running: false, stepIndex: 0, stepLeft: 0, totalLeft: PREP_TOTAL, timer: null, tickAt: 0, pieceId: null };
+// カンペ読み込みの世代番号。枠ごとに持たないと、後から始まった読み込みが先の表示を止めてしまう。
+const kanpeToken = { prepPattern: 0, prepAct: 0 };
 
-function renderSteps() {
-  const box = $('stepList');
+function prow(ja, en) {
+  const row = el('div', 'prow');
+  row.appendChild(el('div', 'ja', ja));
+  row.appendChild(el('div', 'en', en));
+  return row;
+}
+
+const prepLesson = () => Number($('prepLesson').value);
+
+function renderPrepStucks() {
+  const box = $('prepStucks');
   box.replaceChildren();
-  PREP_STEPS.forEach((s, i) => {
-    const d = el('div', 'step');
-    d.dataset.state = !prep.running && prep.totalLeft === PREP_TOTAL ? 'idle'
-      : i < prep.stepIndex ? 'done' : i === prep.stepIndex ? 'active' : 'idle';
-    d.appendChild(el('span', 'no', String(i + 1)));
-    const body = el('div');
-    body.appendChild(el('div', 'ttl', `${s.title}　${mmss(s.seconds)}`));
-    body.appendChild(el('div', 'desc', s.desc));
-    d.appendChild(body);
-    box.appendChild(d);
+  const last = [...state.sessions].reverse().find((s) => s.stucks.length);
+  if (!last) { box.appendChild(el('p', 'hint', 'まだ「詰まったこと」の記録がありません。ここは飛ばして ② へ。')); return; }
+  box.appendChild(el('p', 'hint', `${lessonLabel(last.rank, last.lesson)}（${jpDate(last.date)}）で詰まったこと`));
+  for (const x of last.stucks.slice(0, 5)) box.appendChild(prow(x.ja, x.fix || '（正しい言い方は未記入。自分の言葉で言ってみる）'));
+}
+
+/** カンペから、指定の見出しのカードを箱に流し込む。取れなければ代わりを出す。 */
+async function fillFromKanpe(boxId, titles, fallback) {
+  const box = $(boxId);
+  const token = (kanpeToken[boxId] += 1);
+  const lesson = prepLesson();
+  box.replaceChildren();
+  fallback(box);
+  try {
+    const k = await getKanpe(currentRank(), lesson);
+    if (token !== kanpeToken[boxId]) return;
+    const secs = extractKanpeSections(k.html, titles);
+    if (!secs.length) return;
+    box.replaceChildren();
+    for (const sec of secs) box.appendChild(sec);
+  } catch (e) {
+    if (token !== kanpeToken[boxId]) return;
+    box.appendChild(el('p', 'hint', `カンペを読めませんでした: ${e.message}`));
+  }
+}
+
+function renderPrepPattern() {
+  const l = lessonById.get(prepLesson());
+  return fillFromKanpe('prepPattern', ['今日の型', 'Key Phrases'], (box) => {
+    if (l && l.keyPhrases.length) {
+      const ul = el('ul', 'kp');
+      for (const x of l.keyPhrases) { const li = el('li'); li.appendChild(el('span', 'en', x)); ul.appendChild(li); }
+      box.appendChild(ul);
+    }
+    box.appendChild(el('p', 'hint', 'カンペを読み込み中…'));
   });
 }
 
-function cueBlock(main, sub) {
-  const p = el('p', 'cue');
-  p.appendChild(document.createTextNode(main));
-  if (sub) {
-    const s = el('span', 'ja', sub);
-    p.appendChild(s);
-  }
-  return p;
+function renderPrepAct() {
+  return fillFromKanpe('prepAct', ['準備の', 'Act'], (box) => {
+    box.appendChild(el('p', 'hint', 'カンペを読み込み中…（次回 Act で聞かれることが出ます）'));
+  });
 }
 
-function renderCues() {
-  const box = $('cueBox');
+/** 宣言中のピース。まだ無ければ、練習中から今日の1つを選ぶ。 */
+function renderPrepPiece() {
+  const box = $('prepPiece');
   box.replaceChildren();
-  const lesson = Number($('prepLesson').value);
-  const l = lessonById.get(lesson);
-  const idx = prep.running ? prep.stepIndex : -1;
-
-  if (idx === -1) {
-    box.appendChild(el('p', 'hint', '「5分はじめる」を押すと、ステップごとに読むものがここに出ます。'));
+  if (!prep.pieceId || !state.pieces.find((p) => p.id === prep.pieceId)) {
+    const pick = pickTodayPiece(state, today());
+    prep.pieceId = pick ? pick.id : null;
+  }
+  const piece = prep.pieceId ? state.pieces.find((p) => p.id === prep.pieceId) : null;
+  if (!piece) {
+    box.appendChild(el('p', 'hint', 'まだ宣言がありません。上で答えを作って「次回言うと決める」を押してください。'));
     return;
   }
+  box.appendChild(el('h4', null, '次回これを言う'));
+  const c = el('p', 'cue piece big');
+  c.appendChild(el('span', 'top', pieceLines(piece.ja).join('\n')));
+  c.appendChild(el('span', 'en', pieceLines(piece.en).join('\n')));
+  box.appendChild(c);
+  const row = el('div', 'row tight');
+  const swap = el('button', 'ghost', '前に作った別のピースにする');
+  swap.type = 'button';
+  swap.addEventListener('click', () => {
+    const next = pickTodayPiece(state, today(), prep.pieceId);
+    if (next) { prep.pieceId = next.id; renderPrepPiece(); } else toast('ほかに練習中のピースはありません');
+  });
+  row.appendChild(swap);
+  box.appendChild(row);
+}
 
-  if (idx === 0) {
-    const last = [...state.sessions].reverse().find((s) => s.stucks.length);
-    if (!last) {
-      box.appendChild(el('p', 'hint', 'まだ「詰まったこと」の記録がありません。ここは飛ばして次へ。'));
-    } else {
-      box.appendChild(el('p', 'hint', `Lesson ${last.lesson}（${jpDate(last.date)}）で詰まったこと`));
-      for (const s of last.stucks.slice(0, 4)) box.appendChild(cueBlock(s.ja, s.fix || '（正しい言い方は未記入）'));
-    }
-  } else if (idx === 1) {
-    if (!l || !l.keyPhrases.length) {
-      box.appendChild(el('p', 'hint', 'この回は Key Phrases が登録されていません。カンペを開いて音読してください。'));
-    } else {
-      for (const p of l.keyPhrases.slice(0, 8)) box.appendChild(cueBlock(p));
-    }
-    const open = el('button', 'ghost', '📖 このレッスンのカンペを開く');
-    open.type = 'button';
-    open.addEventListener('click', () => openKanpe(currentRank(), lesson));
-    box.appendChild(open);
-  } else if (idx === 2) {
-    const piece = prep.pieceId ? state.pieces.find((p) => p.id === prep.pieceId) : null;
-    if (piece) {
-      box.appendChild(el('p', 'hint', '日本語を見て、英語を声に出す。3回目は見ずに。今日のフリートークで、これを言う。'));
-      const c = el('p', 'cue piece');
-      c.appendChild(el('span', 'top', pieceLines(piece.ja).join('\n')));
-      c.appendChild(el('span', 'en', pieceLines(piece.en).join('\n')));
-      box.appendChild(c);
-      const swap = el('button', 'ghost', '別のピースにする');
-      swap.type = 'button';
-      swap.addEventListener('click', () => {
-        const next = pickTodayPiece(state, today(), prep.pieceId);
-        if (next) { prep.pieceId = next.id; renderCues(); }
-        else toast('練習中のピースはこれだけです');
-      });
-      box.appendChild(swap);
-    } else {
-      const first = l && l.keyPhrases.length ? l.keyPhrases[0] : 'I';
-      box.appendChild(el('p', 'hint', `ピースがまだ無いので、代わりに1文。例: 「${first} …」から始めて、自分の話にする。「自分の話」タブでピースを作ると、ここに出ます。`));
-      const ta = el('textarea');
-      ta.id = 'prepSentence';
-      ta.placeholder = '短くていい。主語と動詞だけでいい。';
-      ta.value = prep.sentence;
-      ta.addEventListener('input', () => { prep.sentence = ta.value; });
-      box.appendChild(ta);
-    }
-  } else {
-    const due = dueCards().slice(0, 3);
-    if (!due.length) {
-      box.appendChild(el('p', 'hint', '今日ぶんのカードはありません。ここも音読の続きに使ってしまって大丈夫です。'));
-    } else {
-      for (const c of due) {
-        const d = el('details', 'log');
-        const sm = el('summary', null, c.ja);
-        const inner = el('div', 'inner');
-        inner.appendChild(el('p', 'answer', c.en));
-        d.append(sm, inner);
-        box.appendChild(d);
-      }
-    }
+function renderPrepCards() {
+  const box = $('prepCards');
+  box.replaceChildren();
+  const due = dueCards().slice(0, 6);
+  if (!due.length) { box.appendChild(el('p', 'hint', '今日ぶんのカードはありません。③ をもう1回。')); return; }
+  for (const c of due) box.appendChild(prow(c.ja, c.en));
+}
+
+function renderPrepLesson() {
+  const n = prepLesson();
+  const l = lessonById.get(n);
+  if (!l) return;
+  $('prepTopic').textContent = l.keyPhrases.length ? `${l.topic} — ${l.keyPhrases.length} phrases` : `${l.topic} — Key Phrases 未登録`;
+  const suggested = suggestedNextLesson();
+  $('prepBadge').textContent = n === suggested ? '次回' : l.type === 'challenge' ? 'Challenge' : '復習';
+  $('prepBadge').className = n === suggested ? 'badge ok' : 'badge';
+}
+
+function renderPrepAll() {
+  renderPrepLesson();
+  renderPrepStucks();
+  renderPrepPattern();
+  renderPrepAct();
+  renderPrepPiece();
+  renderPrepCards();
+}
+
+function paintSteps() {
+  for (const sec of document.querySelectorAll('.prepsec')) {
+    const i = Number(sec.dataset.step);
+    sec.classList.toggle('active', prep.running && i === prep.stepIndex);
+    sec.classList.toggle('done', prep.running && i < prep.stepIndex);
+  }
+  if (prep.running) {
+    const cur = document.querySelector(`.prepsec[data-step="${prep.stepIndex}"]`);
+    if (cur) cur.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 }
 
@@ -611,18 +648,16 @@ function paintTimer() {
   $('track').style.width = `${((PREP_TOTAL - prep.totalLeft) / PREP_TOTAL) * 100}%`;
   $('clockStep').textContent = prep.running
     ? `${prep.stepIndex + 1}/${PREP_STEPS.length}　${PREP_STEPS[prep.stepIndex].title}　あと ${mmss(prep.stepLeft)}`
-    : prep.totalLeft === PREP_TOTAL ? 'タップして開始' : '一時停止中';
+    : prep.totalLeft === PREP_TOTAL ? 'タイマーは任意です。押すと 1分・1分・2分・1分 で進み、今やる場所が光ります' : '一時停止中';
 }
 
 function advanceStep() {
   if (prep.stepIndex >= PREP_STEPS.length - 1) { finishPrep(); return; }
-  // 残り時間はステップ境界に合わせ直す（早送りしたぶんは捨てる）
   prep.stepIndex += 1;
   prep.stepLeft = PREP_STEPS[prep.stepIndex].seconds;
   prep.totalLeft = PREP_STEPS.slice(prep.stepIndex).reduce((n, s) => n + s.seconds, 0);
   buzz([40, 60, 40]);
-  renderSteps();
-  renderCues();
+  paintSteps();
   paintTimer();
 }
 
@@ -646,15 +681,12 @@ function startPrep() {
   prep.stepLeft = PREP_STEPS[0].seconds;
   prep.totalLeft = PREP_TOTAL;
   prep.tickAt = Date.now();
-  const piece = pickTodayPiece(state, today());
-  prep.pieceId = piece ? piece.id : null;
   clearInterval(prep.timer);
   prep.timer = setInterval(tick, 250);
   $('prepStart').textContent = '❚❚ 一時停止';
   $('prepNext').disabled = false;
   $('prepReset').disabled = false;
-  renderSteps();
-  renderCues();
+  paintSteps();
   paintTimer();
   buzz(30);
 }
@@ -680,53 +712,76 @@ function resetPrep(silent) {
   prep.stepIndex = 0;
   prep.stepLeft = 0;
   prep.totalLeft = PREP_TOTAL;
-  prep.sentence = '';
-  prep.pieceId = null;
-  $('prepStart').textContent = '▶ 5分はじめる';
+  $('prepStart').textContent = '▶ 5分ではじめる';
   $('prepNext').disabled = true;
   $('prepReset').disabled = true;
-  renderSteps();
-  renderCues();
+  paintSteps();
   paintTimer();
   if (!silent) toast('やめました');
 }
 
+/** 予習を記録する。タイマー完走でも「予習した」ボタンでも同じ。 */
 function finishPrep() {
-  const lesson = Number($('prepLesson').value);
+  const lesson = prepLesson();
   const pieceId = prep.pieceId;
-  state.preps.push({ id: uid(), date: today(), rank: currentRank(), lesson, sentence: prep.sentence.trim(), pieceId: pieceId || null });
+  state.preps.push({ id: uid(), date: today(), rank: currentRank(), lesson, sentence: '', pieceId: pieceId || null });
   save();
   resetPrep(true);
   renderDeclared();
   renderAll();
-  toast(pieceId ? '5分やりきりました 🎉 宣言したピースは、レッスン後に「言えた」で回収' : '5分やりきりました 🎉');
+  toast(pieceId ? '予習を記録しました 🎉 次のレッスンでこれを言う' : '予習を記録しました 🎉');
   buzz([60, 80, 60, 80, 120]);
-}
-
-function renderPrepLesson() {
-  const n = Number($('prepLesson').value);
-  const l = lessonById.get(n);
-  if (!l) return;
-  $('prepTopic').textContent = l.keyPhrases.length
-    ? `${l.topic} — ${l.keyPhrases.length} phrases`
-    : `${l.topic} — Key Phrases 未登録`;
-  const suggested = suggestedNextLesson();
-  $('prepBadge').textContent = n === suggested ? '次回' : l.type === 'challenge' ? 'Challenge' : '復習';
-  $('prepBadge').className = n === suggested ? 'badge ok' : 'badge';
-  if (!prep.running) renderCues();
 }
 
 function setupPrepTab() {
   fillLessonSelect($('prepLesson'), suggestedNextLesson());
-  renderPrepLesson();
-  renderSteps();
+  renderPrepAll();
   paintTimer();
-  renderCues();
 
   $('prepLesson').addEventListener('change', () => {
-    state.profile.lastPrepLesson = Number($('prepLesson').value);
+    state.profile.lastPrepLesson = prepLesson();
     save();
     renderPrepLesson();
+    renderPrepPattern();
+    renderPrepAct();
+  });
+  $('prepOpenKanpe').addEventListener('click', () => openKanpe(currentRank(), prepLesson()));
+
+  $('prepActAI').addEventListener('click', async () => {
+    const ja = $('prepActJa').value.trim();
+    if (!ja) { $('prepActJa').focus(); return; }
+    $('prepActAI').disabled = true;
+    $('prepActNote').textContent = '英語にしています…';
+    try {
+      const r = await pieceToEnglish(ja, 'work');
+      $('prepActEn').value = (r.en_lines || []).join('\n');
+      const rare = (r.rare_words || []).filter((w) => w.word);
+      $('prepActNote').textContent = (r.note_ja || '')
+        + (rare.length ? `　難しめの語: ${rare.map((w) => (w.simpler ? `${w.word} → ${w.simpler}` : w.word)).join(', ')}` : '');
+    } catch (e) {
+      $('prepActNote').textContent = e.message;
+    } finally {
+      $('prepActAI').disabled = false;
+    }
+  });
+
+  $('prepActSave').addEventListener('click', () => {
+    const ja = $('prepActJa').value.trim();
+    const en = $('prepActEn').value.trim();
+    const err = validatePiece(ja, en);
+    if (err) { toast(err); return; }
+    const piece = { id: uid(), cat: 'work', ja, en, createdAt: today(), uses: [], graduatedAt: null, fromLesson: { rank: currentRank(), lesson: prepLesson() } };
+    state.pieces.push(piece);
+    prep.pieceId = piece.id;
+    save();
+    $('prepActJa').value = '';
+    $('prepActEn').value = '';
+    $('prepActNote').textContent = '';
+    renderPrepPiece();
+    renderPieces();
+    renderAll();
+    toast('次回これを言う、と決めました');
+    buzz(30);
   });
 
   $('prepStart').addEventListener('click', () => {
@@ -736,6 +791,7 @@ function setupPrepTab() {
   });
   $('prepNext').addEventListener('click', advanceStep);
   $('prepReset').addEventListener('click', () => resetPrep(false));
+  $('prepDone').addEventListener('click', () => finishPrep());
 }
 
 // ---------------------------------------------------------------- 単語タブ
@@ -1007,6 +1063,29 @@ function setupHistoryTab() {
 // ---------------------------------------------------------------- タブ切り替え
 
 const VIEW_LABEL = { log: '記録', prep: '5分予習', kanpe: 'カンペ', cards: '自分の話', history: '履歴' };
+const FLOW = ['kanpe', 'log', 'prep'];
+
+/** 今日どこまで進んだか。カンペ → 記録 → 5分予習 の順。 */
+function todayStep() {
+  const d = today();
+  if (state.preps.some((p) => p.date === d)) return 'done';
+  if (state.sessions.some((x) => x.date === d)) return 'prep';
+  return 'kanpe';
+}
+
+function renderFlow() {
+  const step = todayStep();
+  const at = FLOW.indexOf(step);
+  const here = document.querySelector('.view:not([hidden])');
+  const current = here ? here.id.replace('view-', '') : '';
+  for (const b of document.querySelectorAll('.fstep')) {
+    const i = FLOW.indexOf(b.dataset.step);
+    b.classList.toggle('done', step === 'done' || (at >= 0 && i < at));
+    b.classList.toggle('now', b.dataset.step === current);
+    b.classList.toggle('next', step !== 'done' && b.dataset.step === step && b.dataset.step !== current);
+  }
+  $('flowBar').classList.toggle('all-done', step === 'done');
+}
 
 function switchView(name) {
   for (const v of document.querySelectorAll('.view')) {
@@ -1017,6 +1096,7 @@ function switchView(name) {
     else b.removeAttribute('aria-current');
   }
   $('whereLabel').textContent = VIEW_LABEL[name] || '';
+  renderFlow();
   if (name === 'cards') refillQueue();
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
@@ -1035,6 +1115,10 @@ function setMenu(open) {
 }
 
 function setupNav() {
+  for (const b of document.querySelectorAll('.fstep')) {
+    b.addEventListener('click', () => switchView(b.dataset.step));
+  }
+  $('kanpeToLog').addEventListener('click', () => switchView('log'));
   $('menuBtn').addEventListener('click', () => setMenu($('drawer').hidden));
   $('menuClose').addEventListener('click', () => setMenu(false));
   $('backdrop').addEventListener('click', () => setMenu(false));
@@ -1047,11 +1131,12 @@ function setupNav() {
 // ---------------------------------------------------------------- 起動
 
 function renderAll() {
+  renderFlow();
   renderCards();
   renderHistory();
   renderLogLesson();
   if (!prep.running) fillLessonSelect($('prepLesson'), suggestedNextLesson());
-  renderPrepLesson();
+  renderPrepAll();
   renderPieces();
   renderSampleSummary();
   renderSyncStatus();
@@ -1156,6 +1241,11 @@ async function main() {
     toast,
   });
   boot(false);
+  // 今日どこまで進んだかを見て、やる場所から開く
+  const step = todayStep();
+  if (step === 'kanpe') { switchView('kanpe'); renderKanpe(); }
+  else if (step !== 'done') switchView(step);
+  else renderFlow();
 }
 
 main();

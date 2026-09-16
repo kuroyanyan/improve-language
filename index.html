@@ -24,6 +24,14 @@
     </div>
   </header>
 
+  <nav class="flow" id="flowBar" aria-label="今日の流れ">
+    <button type="button" class="fstep" data-step="kanpe"><span class="n">1</span><span class="t">カンペ<small>レッスン中に開く</small></span></button>
+    <span class="farrow">→</span>
+    <button type="button" class="fstep" data-step="log"><span class="n">2</span><span class="t">記録<small>終わってから30秒</small></span></button>
+    <span class="farrow">→</span>
+    <button type="button" class="fstep" data-step="prep"><span class="n">3</span><span class="t">5分予習<small>次のレッスンの分</small></span></button>
+  </nav>
+
   <!-- ============ 記録 ============ -->
   <section class="view" id="view-log" aria-labelledby="tab-log">
 
@@ -101,7 +109,7 @@
     <div class="card">
       <h2>保存 <span class="jp">メモは任意</span></h2>
       <textarea id="memo" placeholder="次はもっとゆっくり話す。フリートークで質問を1つ返す。"></textarea>
-      <button type="button" class="primary" id="saveSession">このレッスンを記録する</button>
+      <button type="button" class="primary" id="saveSession">記録する → 5分予習へ</button>
       <p class="hint" id="saveHint"></p>
     </div>
 
@@ -120,32 +128,65 @@
   <section class="view" id="view-prep" hidden aria-labelledby="tab-prep">
 
     <div class="card">
-      <h2>5分予習 <span class="jp">次のレッスンのぶん</span></h2>
+      <h2>5分予習 <span class="jp">上から順に、声に出すだけ</span></h2>
       <div class="lessonpick">
         <select id="prepLesson" aria-label="予習するレッスンを選ぶ"></select>
         <span class="badge" id="prepBadge">次回</span>
+        <button type="button" class="ghost" id="prepOpenKanpe">📖 カンペ全文</button>
       </div>
       <p class="hint" id="prepTopic"></p>
-
-      <div class="timer">
-        <span class="clock" id="clock">5:00</span>
-        <span class="total" id="clockStep">タップして開始</span>
-      </div>
-      <div class="track"><i id="track"></i></div>
-
-      <div class="row">
-        <button type="button" class="primary" id="prepStart">▶ 5分はじめる</button>
-        <button type="button" id="prepNext" disabled>次のステップ →</button>
-      </div>
-      <div class="row tight">
-        <button type="button" class="ghost" id="prepReset" disabled>やめる</button>
-      </div>
     </div>
 
+    <div class="prepbar">
+      <div class="prepbar-main">
+        <span class="clock" id="clock">5:00</span>
+        <span class="total" id="clockStep">タイマーは任意です。押すと 1分・1分・2分・1分 で進み、今やる場所が光ります</span>
+      </div>
+      <div class="row tight">
+        <button type="button" class="primary" id="prepStart">▶ 5分ではじめる</button>
+        <button type="button" id="prepNext" disabled>次のステップ →</button>
+        <button type="button" class="ghost" id="prepReset" disabled>やめる</button>
+      </div>
+      <div class="track"><i id="track"></i></div>
+    </div>
+
+    <section class="card prepsec" data-step="0">
+      <h2><span class="no">1</span>前回の詰まり <span class="jp">1分 · 左を見て、右を声に出す</span></h2>
+      <div id="prepStucks"></div>
+    </section>
+
+    <section class="card prepsec" data-step="1">
+      <h2><span class="no">2</span>今日の型と Key Phrases <span class="jp">1分 · 2回ずつ音読。意味より先に口を慣らす</span></h2>
+      <div id="prepPattern" class="kanpe inline"></div>
+    </section>
+
+    <section class="card prepsec" data-step="2">
+      <h2><span class="no">3</span>Act の想定問答 <span class="jp">2分 · 次回そのまま聞かれる。答えを先に作っておく</span></h2>
+      <div id="prepAct" class="kanpe inline"></div>
+      <label class="field">日本語で答える（3行＋最後に相手への質問1つ）
+        <textarea id="prepActJa" placeholder="例:&#10;採用が私の担当&#10;毎月だれかを採用している&#10;だから毎週たくさん面接する&#10;あなたの会社はどうやって採用する？"></textarea>
+      </label>
+      <div class="row tight">
+        <button type="button" id="prepActAI">簡単な英語にする</button>
+      </div>
+      <label class="field">英語（1行1文・12語以下・最後は質問）
+        <textarea id="prepActEn" placeholder="「簡単な英語にする」で作れます。直接書いてもかまいません。"></textarea>
+      </label>
+      <p class="hint" id="prepActNote"></p>
+      <div class="row tight">
+        <button type="button" class="primary" id="prepActSave">これを次回言うと決める</button>
+      </div>
+      <div id="prepPiece"></div>
+    </section>
+
+    <section class="card prepsec" data-step="3">
+      <h2><span class="no">4</span>単語カード <span class="jp">1分 · 左を見て英語。出なければ右を読んで1回言う</span></h2>
+      <div id="prepCards"></div>
+    </section>
+
     <div class="card">
-      <h2>いまやること <span class="jp">声に出すのが全部</span></h2>
-      <div class="steps" id="stepList"></div>
-      <div id="cueBox"></div>
+      <button type="button" class="primary" id="prepDone">予習した（今日のピースを宣言する）</button>
+      <p class="hint">タイマーを使わなくても、これを押せば記録され、宣言したピースが次の記録に出ます。</p>
     </div>
 
   </section>
@@ -168,6 +209,11 @@
     </div>
 
     <div class="kanpe" id="kanpeBody"></div>
+
+    <div class="card">
+      <button type="button" class="primary" id="kanpeToLog">レッスンが終わった → 記録する</button>
+      <p class="hint">記録は30秒です。録音か文字起こしを渡せば、詰まりと単語は AI が入れます。</p>
+    </div>
 
   </section>
 

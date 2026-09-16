@@ -42,6 +42,7 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.locator('#logLesson option')).toHaveCount(20);
+  await go(page, 'log');
 });
 
 test('記録 → 予習へ遷移、次レッスン繰り上げ、カード生成、フリートーク分数', async ({ page }) => {
@@ -77,14 +78,9 @@ test('ピース: 質問なしは保存できない → 作成 → 予習で宣�
   await page.reload();
 
   await go(page, 'prep');
-  await page.click('#prepStart');
-  await page.click('#prepNext');
-  await page.click('#prepNext');
-  await expect(page.locator('#clockStep')).toContainText('今日のピースを宣言');
-  await expect(page.locator('#cueBox .cue.piece .en')).toContainText('Lately, I think a lot');
-  await page.click('#prepNext');
-  await page.click('#prepNext');
-  await expect(page.locator('#toast')).toContainText('宣言したピース');
+  await expect(page.locator('#prepPiece .cue.piece .en')).toContainText('Lately, I think a lot');
+  await page.click('#prepDone');
+  await expect(page.locator('#toast')).toContainText('次のレッスンでこれを言う');
 
   await go(page, 'log');
   await expect(page.locator('#declaredBox .item')).toHaveCount(1);
@@ -125,8 +121,7 @@ test('Rank 切替で教材が変わり、記録はランク付きで残る', asy
 test('AI（モック）: 詰まり・単語が自動で下書きに入り、宣言ピースの判定も先に入る', async ({ page }) => {
   await addPiece(page);
   await go(page, 'prep');
-  await page.click('#prepStart');
-  for (let i = 0; i < 4; i += 1) await page.click('#prepNext');
+  await page.click('#prepDone');
 
   await page.route('**/api/ai/feedback', (route) => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -241,9 +236,7 @@ test('カンペ: 裏方から取得して端末に保存、script は落とす',
   expect(hits).toBe(before);
 
   await go(page, 'prep');
-  await page.click('#prepStart');
-  await page.click('#prepNext');
-  await page.click('#cueBox button.ghost');
+  await page.click('#prepOpenKanpe');
   await expect(page.locator('#view-kanpe')).toBeVisible();
 });
 
@@ -265,4 +258,64 @@ test('ダークテーマでも描画される', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.reload();
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(16, 23, 30)');
+});
+
+test('今日の流れ: 起動はカンペ、記録で②、予習で③が終わる', async ({ page }) => {
+  await page.route('**/api/kanpe**', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ html: '<div class="lesson-head"><h2>Talking About Your Workload</h2></div><section class="card"><h3>今日の型 <span class="jp">これさえ守れば勝ち</span></h3><p>The most important task is …</p></section><section class="card"><h3>準備の3質問</h3><p>What do you do?</p></section><section class="card"><h3>Act</h3><p>Explain your work.</p></section>', common: '' }),
+  }));
+  // 何もしていない日は、開くとカンペに着地する
+  await page.goto('/');
+  await expect(page.locator('#view-kanpe')).toBeVisible();
+  await expect(page.locator('.fstep[data-step="kanpe"]')).toHaveClass(/now/);
+
+  // カンペの「次へ」で記録へ
+  await page.click('#kanpeToLog');
+  await expect(page.locator('#view-log')).toBeVisible();
+  await page.click('#saveSession');
+  await expect(page.locator('#view-prep')).toBeVisible();
+  await expect(page.locator('.fstep[data-step="kanpe"]')).toHaveClass(/done/);
+  await expect(page.locator('.fstep[data-step="log"]')).toHaveClass(/done/);
+
+  // 予習に次回レッスンのカンペ（準備の質問と Act）が出る
+  await expect(page.locator('#prepAct')).toContainText('準備の3質問');
+  await expect(page.locator('#prepAct')).toContainText('Act');
+  // 2つの枠が同時に読み込まれても、どちらもカンペの中身に置き換わる
+  await expect(page.locator('#prepPattern')).toContainText('今日の型');
+  await expect(page.locator('#prepPattern')).not.toContainText('読み込み中');
+
+  await page.click('#prepDone');
+  await expect(page.locator('#flowBar')).toHaveClass(/all-done/);
+
+  // 開き直すと、今日はもう流れが終わっている
+  await page.reload();
+  await expect(page.locator('#flowBar')).toHaveClass(/all-done/);
+});
+
+test('Act の想定問答: 日本語 → 英語 → 次回これを言う', async ({ page }) => {
+  await page.route('**/api/kanpe**', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ html: '<section class="card"><h3>準備の3質問</h3><p>What do you do?</p></section>', common: '' }),
+  }));
+  await page.route('**/api/ai/piece', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ en_lines: ['Hiring is my job.', 'We hire someone every month.', 'So I do many interviews.', 'How do you hire people?'], rare_words: [], note_ja: '短くしました' }),
+  }));
+  await go(page, 'prep');
+  await page.fill('#prepActJa', '採用が私の担当\n毎月だれかを採用している\nだから毎週たくさん面接する\nあなたの会社はどうやって採用する？');
+  await page.click('#prepActAI');
+  await expect(page.locator('#prepActEn')).toHaveValue(/How do you hire people\?/);
+  await expect(page.locator('#prepActNote')).toContainText('短くしました');
+  await page.click('#prepActSave');
+  await expect(page.locator('#toast')).toContainText('次回これを言う');
+  await expect(page.locator('#prepPiece')).toContainText('Hiring is my job.');
+  const s = await state(page);
+  expect(s.pieces).toHaveLength(1);
+  expect(s.pieces[0].fromLesson).toMatchObject({ rank: 'C' });
+
+  // 宣言したものが、次の記録で回収できる
+  await page.click('#prepDone');
+  await go(page, 'log');
+  await expect(page.locator('#declaredBox .item')).toContainText('Hiring is my job.');
 });

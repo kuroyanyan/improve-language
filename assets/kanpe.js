@@ -37,6 +37,19 @@ export function sanitize(html) {
   return doc.body.firstChild;
 }
 
+/** カンペ HTML から、見出しが titles のどれかで始まる section.card だけを取り出す（予習タブ用）。 */
+export function extractKanpeSections(html, titles) {
+  const root = sanitize(html);
+  const out = [];
+  for (const sec of root.querySelectorAll('section.card')) {
+    const h = sec.querySelector('h3');
+    if (!h) continue;
+    const t = ((h.childNodes[0] && h.childNodes[0].textContent) || h.textContent || '').trim();
+    if (titles.some((x) => t.startsWith(x))) out.push(sec);
+  }
+  return out;
+}
+
 export async function getKanpe(rank, lesson, { refresh = false } = {}) {
   const key = `${rank}-${lesson}`;
   const hit = loadCache()[key];

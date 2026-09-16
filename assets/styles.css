@@ -593,3 +593,61 @@ details.log .inner h4 { margin-top: 6px; }
   padding: 24px; width: min(360px, 100%); display: flex; flex-direction: column; gap: 12px;
 }
 .gate-card h2 { font-family: "Lora", Georgia, serif; font-size: 1.2rem; margin: 0; }
+
+/* ---------- 今日の流れ（カンペ → 記録 → 5分予習） ---------- */
+.flow {
+  display: flex; align-items: stretch; gap: 6px; margin: 0 0 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px;
+}
+.flow .farrow { align-self: center; color: var(--muted); font-size: 0.9rem; }
+.fstep {
+  flex: 1 1 0; display: flex; align-items: center; gap: 9px; text-align: left;
+  border: 1px solid transparent; background: none; color: var(--muted); border-radius: 9px; padding: 8px 10px; min-height: 48px;
+}
+.fstep:hover { background: var(--say-bg); }
+.fstep .n {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center;
+  background: var(--border); color: var(--surface); font-size: 0.74rem; font-weight: 700;
+}
+.fstep .t { display: flex; flex-direction: column; gap: 1px; font-size: 0.92rem; font-weight: 700; color: var(--ink); }
+.fstep .t small { font-size: 0.72rem; font-weight: 500; color: var(--muted); }
+.fstep.done .n { background: var(--ok-ink); }
+.fstep.done .t { color: var(--muted); }
+.fstep.next { border-color: var(--accent); background: var(--accent-soft); }
+.fstep.next .n { background: var(--accent); }
+.fstep.now .n { background: var(--accent); }
+.fstep.now .t { color: var(--accent); }
+.flow.all-done .fstep .n { background: var(--ok-ink); }
+@media (max-width: 700px) {
+  .flow { flex-wrap: wrap; }
+  .flow .farrow { display: none; }
+  .fstep { flex: 1 1 100%; }
+}
+
+/* ---------- 5分予習: 読むものを全部出す ---------- */
+.prepbar {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  padding: 8px 0 10px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border);
+}
+.prepbar-main { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.prepbar .clock { font-family: "Lora", Georgia, serif; font-size: 2rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.prepbar .total { font-size: 0.82rem; color: var(--muted); }
+.prepbar .row > * { flex: 0 1 auto; }
+.prepsec { transition: border-color 0.2s, box-shadow 0.2s; scroll-margin-top: 120px; }
+.prepsec.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.prepsec.done { opacity: 0.6; }
+.prepsec > h2 .no {
+  display: inline-flex; width: 24px; height: 24px; border-radius: 7px; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 0.8rem; margin-right: 8px;
+}
+.prepsec.done > h2 .no { background: var(--ok-ink); }
+.prow { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--say-bg); }
+.prow + .prow { margin-top: 8px; }
+.prow .ja { color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+.prow .en { font-weight: 700; font-size: 1.1rem; line-height: 1.6; color: var(--accent); }
+@media (max-width: 600px) { .prow { grid-template-columns: 1fr; gap: 4px; } }
+.cue.piece.big { font-size: 1.15rem; }
+.cue.piece.big .top { font-size: 0.95rem; }
+.kanpe.inline { gap: 12px; }
+.kanpe.inline section.card { border: none; padding: 0; background: none; }
+.kanpe.inline .card > h3 { font-size: 0.8rem; }

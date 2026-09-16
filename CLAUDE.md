@@ -33,7 +33,7 @@ npm test                    # Playwright スモーク（/api/* はモック）
 ## 構成
 ```
 index.html                画面（記録 / 5分予習 / 自分の話 / 履歴）
-assets/app.js             状態・記録・予習・履歴・ランク切替・モジュール配線
+assets/app.js             状態・今日の流れ・記録・予習（Act の想定問答）・履歴・ランク切替・配線
 assets/pieces.js          自分史ピース（3文＋質問、宣言→回収、卒業）
 assets/sample.js          月1の60秒サンプル（録音→文字起こし→固定ルーブリック採点）
 assets/sync.js            集計スナップショットと GitHub への同期・private ファイルの読み取り
