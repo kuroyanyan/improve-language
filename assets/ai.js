@@ -19,7 +19,7 @@ function pickMime() {
   return cands.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
 }
 
-/** 録音ハンドル。start() → stop() で Blob。レッスン録音と60秒サンプルの両方で使う。 */
+/** 録音ハンドル（マイクだけ）。start() → stop() で Blob。60秒サンプルで使う（レッスンは createLessonRecorder）。 */
 export function createRecorder() {
   const h = { recorder: null, chunks: [], stream: null, mime: '' };
   return {
@@ -49,20 +49,129 @@ export function createRecorder() {
   };
 }
 
-const rec = { handle: null, startedAt: 0, timer: null, blob: null };
+/**
+ * レッスンの録音。相手の声（共有したタブの音）と自分の声（マイク）を1本に混ぜて録る。
+ * 文字起こしは約23分を超える音声を受け付けないので、10分ごとに別のファイルに区切る。
+ * 共有しなかったとき・タブの音声が付いていないときは、自分の声だけを録る。
+ */
+export function createLessonRecorder({ onTabEnded } = {}) {
+  const h = { ctx: null, tracks: [], current: null, done: [], parts: [], timer: null, meter: null, tabHeard: false };
+  const segmentMs = Number(window.__lessonSegmentMs) || 10 * 60 * 1000; // テストでだけ短くする
 
-async function startRecording() {
-  rec.handle = createRecorder();
-  await rec.handle.start();
-  rec.blob = null;
-  rec.startedAt = Date.now();
+  function beginSegment(stream) {
+    const mime = pickMime();
+    const i = h.done.length;
+    const chunks = [];
+    const r = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
+    r.addEventListener('dataavailable', (e) => { if (e.data && e.data.size) chunks.push(e.data); });
+    h.done.push(new Promise((resolve) => {
+      r.addEventListener('stop', () => { h.parts[i] = new Blob(chunks, { type: r.mimeType || mime || 'audio/webm' }); resolve(); }, { once: true });
+    }));
+    r.start(5000);
+    h.current = r;
+  }
+
+  return {
+    /** 録音を始める。tab は相手の声（タブの音）が入っているか。 */
+    async start() {
+      if (!navigator.mediaDevices || !window.MediaRecorder) throw new Error('このブラウザは録音に対応していません');
+      h.ctx = new AudioContext();
+      // 画面共有は押した直後でないと開けないので、マイクより先に頼む
+      let shared = null;
+      if (navigator.mediaDevices.getDisplayMedia) {
+        const controller = window.CaptureController ? new CaptureController() : null;
+        try {
+          shared = await navigator.mediaDevices.getDisplayMedia({
+            video: { displaySurface: 'browser', frameRate: 1 },
+            audio: { suppressLocalAudioPlayback: false },
+            systemAudio: 'include',
+            selfBrowserSurface: 'exclude',
+            surfaceSwitching: 'include',
+            ...(controller ? { controller } : {}),
+          });
+          // 共有したタブに画面を切り替えない（カンペを見たまま）
+          try { if (controller && controller.setFocusBehavior) controller.setFocusBehavior('no-focus-change'); } catch { /* 未対応は無視 */ }
+        } catch {
+          shared = null; // 共有をやめた → 自分の声だけ
+        }
+      }
+      let mic;
+      try {
+        mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      } catch (e) {
+        if (shared) shared.getTracks().forEach((t) => t.stop());
+        h.ctx.close();
+        throw e;
+      }
+      const dest = h.ctx.createMediaStreamDestination();
+      h.ctx.createMediaStreamSource(mic).connect(dest);
+      h.tracks.push(...mic.getTracks());
+      const tabAudio = shared && shared.getAudioTracks()[0];
+      if (tabAudio) {
+        const tab = h.ctx.createMediaStreamSource(new MediaStream([tabAudio]));
+        tab.connect(dest);
+        // 違うタブを選ぶと、無音のまま「相手の声あり」になる。一度でも鳴ったかを見張る
+        const meter = h.ctx.createAnalyser();
+        tab.connect(meter);
+        const buf = new Float32Array(meter.fftSize);
+        h.meter = setInterval(() => {
+          meter.getFloatTimeDomainData(buf);
+          if (Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length) > 0.01) { h.tabHeard = true; clearInterval(h.meter); }
+        }, 500);
+        tabAudio.addEventListener('ended', () => { if (onTabEnded) onTabEnded(); }, { once: true });
+        h.tracks.push(...shared.getTracks());
+      } else if (shared) {
+        shared.getTracks().forEach((t) => t.stop()); // 音の付いていない共有は要らない
+      }
+      if (h.ctx.state === 'suspended') await h.ctx.resume();
+      beginSegment(dest.stream);
+      h.timer = setInterval(() => { const prev = h.current; beginSegment(dest.stream); prev.stop(); }, segmentMs);
+      return { tab: !!tabAudio };
+    },
+    /** 止めて、区切ったファイル（録った順）と、共有したタブが一度でも鳴ったかを返す。 */
+    async stop() {
+      clearInterval(h.timer);
+      clearInterval(h.meter);
+      if (h.current && h.current.state !== 'inactive') h.current.stop();
+      await Promise.all(h.done);
+      h.tracks.forEach((t) => t.stop());
+      if (h.ctx) await h.ctx.close();
+      return { parts: h.parts.filter((b) => b && b.size), tabHeard: h.tabHeard };
+    },
+  };
 }
 
-async function stopRecording() {
-  if (!rec.handle) return null;
-  rec.blob = await rec.handle.stop();
+const REC_IDLE_HINT = '押したら MyStage のタブを選び、「タブの音声も共有する」をオンに。相手の声と自分の声を一緒に録ります（音声は保存しません）。';
+const rec = { handle: null, startedAt: 0, timer: null, parts: [], audio: null, tabEnded: false, tabSilent: false, transcript: '' };
+
+function paintRecButton() {
+  const b = $('kanpeRec');
+  b.textContent = rec.handle ? '■ 録音を終えて記録へ' : '● 録音してレッスンを始める';
+  b.setAttribute('aria-pressed', String(!!rec.handle));
+}
+
+/** 録音中なら止めて、記録タブで文字起こしに回せる状態にする。録音していなければ何もしない。 */
+export async function finishLessonRecording() {
+  if (!rec.handle) return;
+  const handle = rec.handle;
   rec.handle = null;
-  return rec.blob;
+  clearInterval(rec.timer);
+  $('recLive').hidden = true;
+  paintRecButton();
+  $('kanpeRecHint').textContent = REC_IDLE_HINT;
+  const { parts, tabHeard } = await handle.stop();
+  rec.parts = parts;
+  rec.transcript = '';
+  // 共有したタブが一度も鳴らなければ、相手の声は入っていないものとして扱う（AI に相手の発話を推測させない）
+  rec.tabSilent = rec.audio === 'both' && !tabHeard;
+  if (rec.tabSilent) rec.audio = 'learner_only';
+  const took = fmt(Date.now() - rec.startedAt);
+  const voices = rec.audio === 'both' ? `相手の声あり${rec.tabEnded ? '・途中で共有が止まった' : ''}`
+    : rec.tabSilent ? '相手の声が聞こえませんでした。共有したタブが違ったかもしれません・自分の声だけ' : '自分の声だけ';
+  $('aiStatus').textContent = rec.parts.length
+    ? `録音 ${took}（${voices}・${rec.parts.length}つに区切って文字起こしします）。「文字起こし → AI フィードバック」でどうぞ`
+    : '音声が取れませんでした';
+  $('aiRun').disabled = !(rec.parts.length || $('aiPaste').value.trim());
 }
 
 function fmt(ms) {
@@ -100,50 +209,35 @@ export function setupAI(hooks) {
   const status = $('aiStatus');
   const say = (m) => { status.textContent = m; };
 
-  $('recStart').addEventListener('click', async () => {
+  // カンペ画面の録音ボタン。録音中はもう一度押すと止めて記録へ
+  $('kanpeRec').addEventListener('click', async () => {
+    if (rec.handle) { await finishLessonRecording(); hooks.showLog(); return; }
+    const btn = $('kanpeRec');
+    btn.disabled = true;
     try {
-      await startRecording();
-      $('recStart').hidden = true;
-      $('recStop').hidden = false;
-      say('録音中… レッスンが終わったら停止を押す。カンペを見に行っても録音は続きます');
+      const handle = createLessonRecorder({
+        onTabEnded: () => { rec.tabEnded = true; hooks.toast('相手の声の共有が止まりました。自分の声は録り続けています'); },
+      });
+      const { tab } = await handle.start();
+      Object.assign(rec, { handle, startedAt: Date.now(), parts: [], audio: tab ? 'both' : 'learner_only', tabEnded: false, tabSilent: false, transcript: '' });
+      $('kanpeRecHint').textContent = tab
+        ? '録音中（相手の声と自分の声）。カンペを読んでいても続きます。終わったら下の「記録する」か、このボタンで止めます。'
+        : '録音中（自分の声だけ）。相手の声は入っていません。入れるには一度止めて、MyStage のタブを選び「タブの音声も共有する」をオンに。';
       rec.timer = setInterval(() => {
-        const t = fmt(Date.now() - rec.startedAt);
-        $('recClock').textContent = t;
         const live = $('recLive');
-        if (live) { live.hidden = false; live.textContent = `● 録音中 ${t}`; }
+        live.hidden = false;
+        live.textContent = `● 録音中 ${fmt(Date.now() - rec.startedAt)}`;
       }, 500);
     } catch (e) {
-      say(`録音を始められませんでした: ${e.message}`);
+      $('kanpeRecHint').textContent = `録音を始められませんでした: ${e.message}`;
+    } finally {
+      btn.disabled = false;
+      paintRecButton();
     }
   });
 
-  $('recStop').addEventListener('click', async () => {
-    clearInterval(rec.timer);
-    const live = $('recLive');
-    if (live) live.hidden = true;
-    const blob = await stopRecording();
-    $('recStop').hidden = true;
-    $('recStart').hidden = false;
-    if (!blob || !blob.size) { say('音声が取れませんでした'); return; }
-    $('recSave').hidden = false;
-    $('aiRun').disabled = false;
-    say(`録音 ${fmt(Date.now() - rec.startedAt)}・${(blob.size / 1048576).toFixed(1)}MB。「文字起こし → AI フィードバック」でどうぞ`);
-  });
-
-  $('recSave').addEventListener('click', () => {
-    if (!rec.blob) return;
-    const url = URL.createObjectURL(rec.blob);
-    const a = el('a');
-    a.href = url;
-    a.download = `bizmates-L${hooks.getContext().lesson}-${new Date().toISOString().slice(0, 10)}.${rec.blob.type.includes('mp4') ? 'm4a' : 'webm'}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
-
   $('aiPaste').addEventListener('input', () => {
-    $('aiRun').disabled = !($('aiPaste').value.trim() || rec.blob);
+    $('aiRun').disabled = !($('aiPaste').value.trim() || rec.parts.length);
   });
 
   $('aiRun').addEventListener('click', async () => {
@@ -151,20 +245,29 @@ export function setupAI(hooks) {
     $('aiRun').disabled = true;
     try {
       let transcript = $('aiPaste').value.trim();
-      if (!transcript) {
-        say('文字起こし中…（数十秒）');
-        transcript = await transcribeBlob(rec.blob,
-          `Online English lesson (Bizmates). A Japanese learner practices business English with a trainer. ` +
-          `Mostly English; the learner occasionally speaks Japanese. Topic: ${ctx.topic}. ` +
-          `Key phrases: ${ctx.keyPhrases.join('; ')}.`);
+      if (!transcript && rec.parts.length) {
+        const texts = [];
+        for (const [i, part] of rec.parts.entries()) {
+          say(`文字起こし中… ${i + 1}/${rec.parts.length}（数十秒ずつ）`);
+          texts.push(await transcribeBlob(part,
+            `Online English lesson (Bizmates). A Japanese learner practices business English with a trainer. ` +
+            `Mostly English; the learner occasionally speaks Japanese. Topic: ${ctx.topic}. ` +
+            `Key phrases: ${ctx.keyPhrases.join('; ')}.`));
+        }
+        transcript = texts.join('\n').trim();
+        rec.transcript = transcript;
         $('aiPaste').value = transcript;
       }
+      if (!transcript) throw new Error('録音か文字起こしがありません');
+      // 録音から作った文字起こしなら、相手の声が入っているかを AI に伝える（貼り付けたものは伝えない）
+      const audio = rec.transcript && transcript === rec.transcript ? rec.audio : undefined;
       say('Claude がフィードバックを作成中…（1分ほど）');
-      const fb = await getFeedback({ transcript, ...ctx });
+      const fb = await getFeedback({ transcript, audio, ...ctx });
       if (hooks.autoFill) hooks.autoFill(fb);
       renderFeedback(fb, hooks, { readOnly: !!hooks.autoFill });
-      hooks.setPendingAI({ ...fb, raw_transcript_chars: transcript.length, at: new Date().toISOString() });
+      hooks.setPendingAI({ ...fb, audio, raw_transcript_chars: transcript.length, at: new Date().toISOString() });
       if (hooks.onPieceUse && fb.piece_use && fb.piece_use.length) hooks.onPieceUse(fb.piece_use, ctx.declaredPieces || []);
+      rec.parts = [];
       say('できました。詰まり・単語は下の「記録に入るもの」に入れました。要らないものは ✕ で外して保存');
       hooks.toast('AI フィードバック完了');
     } catch (e) {

@@ -145,7 +145,7 @@ test('Rank 切替で教材が変わり、記録はランク付きで残る', asy
   await expect(page.locator('#historyList details').first()).toContainText('Rank D L1');
 });
 
-test('AI（モック）: 詰まり・単語が自動で下書きに入り、宣言ピースの判定も先に入る', async ({ page }) => {
+test('AI（モック）: 詰まり・単語が自動で下書きに入り、宣言ピースの AI 判定は押さずに別に残る', async ({ page }) => {
   await addPiece(page);
   await go(page, 'prep');
   await page.click('#prepDone');
@@ -173,9 +173,14 @@ test('AI（モック）: 詰まり・単語が自動で下書きに入り、宣�
   await expect(page.locator('#aiResult')).toContainText('あなたから 2 回');
   await expect(page.locator('#stuckList li')).toHaveCount(1);
   await expect(page.locator('#wordList li')).toHaveCount(1);
-  await expect(page.locator('#declaredBox .item button.yes')).toHaveAttribute('aria-pressed', 'true');
+  // AI の判定で回収ボタンを先に押さない。押すのは本人で、AI の判定は別に残る（自己申告と突き合わせるため）
+  await expect(page.locator('#declaredBox .item button.yes')).toHaveAttribute('aria-pressed', 'false');
+  await page.click('#declaredBox .item button.no');
+  const puts = await stubState(page);
   await page.click('#saveSession');
-  expect((await state(page)).sessions[0].declared[0].ok).toBe(true);
+  expect((await state(page)).sessions[0].declared[0]).toMatchObject({ ok: false, ai: true });
+  await expect.poll(() => puts.length, { timeout: 15000 }).toBeGreaterThan(0);
+  expect(puts[puts.length - 1].snapshot.sessions[0].declared_detail).toEqual([{ ok: false, ai: true }]);
   await go(page, 'history');
   await expect(page.locator('#monthHint')).toContainText('質問カバー率 100%');
 
@@ -345,4 +350,127 @@ test('Act の想定問答: 日本語 → 英語 → 次回これを言う', asyn
   await page.click('#prepDone');
   await go(page, 'log');
   await expect(page.locator('#declaredBox .item')).toContainText('Hiring is my job.');
+});
+
+/**
+ * 画面共有とマイクを偽物に差し替える（ヘッドレスで録音の流れを通すため）。区切りは 1.2 秒にする。
+ * マイクは無音、共有したタブは 440Hz で鳴る（tabSilent なら無音）。録音に音があれば、それはタブから来た音。
+ */
+async function fakeMedia(page, { share = true, tabSilent = false } = {}) {
+  await page.addInitScript(([shareOk, silent]) => {
+    window.__lessonSegmentMs = 1200;
+    window.__mediaCalls = [];
+    const tone = (hz, level) => {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = hz;
+      gain.gain.value = level;
+      const dest = ctx.createMediaStreamDestination();
+      osc.connect(gain).connect(dest);
+      osc.start();
+      return dest.stream;
+    };
+    navigator.mediaDevices.getUserMedia = async () => { window.__mediaCalls.push('mic'); return tone(220, 0); };
+    navigator.mediaDevices.getDisplayMedia = async () => {
+      window.__mediaCalls.push('share');
+      if (!shareOk) throw new DOMException('共有をやめた', 'NotAllowedError');
+      const video = document.createElement('canvas').captureStream(1).getVideoTracks();
+      return new MediaStream([...video, ...tone(440, silent ? 0 : 0.8).getAudioTracks()]);
+    };
+  }, [share, tabSilent]);
+  await page.reload();
+  await expect(page.locator('#logLesson option')).toHaveCount(20);
+}
+
+const LESSON_FEEDBACK = {
+  summary_ja: 'よく話せています。', good: [], corrections: [], stucks: [], words: [], key_phrase_use: [], piece_use: [],
+  trainer_questions: [{ q_en: 'What do you do?', q_ja: '仕事は？', covered: true }],
+  trainer_question_count: 1, learner_question_count: 1, next_focus_ja: 'ゆっくり', cleaned_transcript: 'Trainer: What do you do?\nMe: I do HR.',
+};
+
+/** 文字起こしと AI の窓口をモックし、送られてきたものを集める。 */
+async function stubLessonAI(page) {
+  const got = { transcribe: [], feedback: null };
+  await page.route('**/api/transcribe**', (route) => {
+    got.transcribe.push(route.request().postDataBuffer() || Buffer.alloc(0));
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ text: `part ${got.transcribe.length}` }) });
+  });
+  await page.route('**/api/ai/feedback', (route) => {
+    got.feedback = JSON.parse(route.request().postData() || '{}');
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(LESSON_FEEDBACK) });
+  });
+  return got;
+}
+
+test('録音: カンペから相手の声ごと録り、区切って文字起こしし、相手の声ありとして AI に渡す', async ({ page }) => {
+  await fakeMedia(page);
+  const got = await stubLessonAI(page);
+  await go(page, 'kanpe');
+  await page.click('#kanpeRec');
+  await expect(page.locator('#recLive')).toBeVisible();
+  await expect(page.locator('#kanpeRecHint')).toContainText('相手の声と自分の声');
+  await expect(page.locator('#kanpeRec')).toHaveText(/録音を終えて記録へ/);
+  // 画面共有は押した直後にしか開けないので、マイクより先に頼む
+  expect(await page.evaluate(() => window.__mediaCalls)).toEqual(['share', 'mic']);
+  await page.waitForTimeout(3000);
+
+  // 「レッスンが終わった → 記録する」で録音も止まる
+  await page.click('#kanpeToLog');
+  await expect(page.locator('#view-log')).toBeVisible();
+  await expect(page.locator('#recLive')).toBeHidden();
+  await expect(page.locator('#aiStatus')).toContainText('相手の声あり');
+  await expect(page.locator('#kanpeRec')).toHaveText(/録音してレッスンを始める/);
+
+  await page.click('#aiRun');
+  await expect(page.locator('#aiResult')).toContainText('よく話せています');
+  expect(got.transcribe.length).toBeGreaterThanOrEqual(2);
+  // 送った音声を復号して、相手（タブ）の音が本当に入っていることを確かめる（マイクは無音にしてある）
+  const rms = await page.evaluate(async (b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const d = (await new AudioContext().decodeAudioData(bytes.buffer)).getChannelData(0);
+    return Math.sqrt(d.reduce((sum, v) => sum + v * v, 0) / d.length);
+  }, got.transcribe[0].toString('base64'));
+  expect(rms).toBeGreaterThan(0.05);
+  expect(got.feedback.audio).toBe('both');
+  expect(got.feedback.transcript.indexOf('part 1')).toBeLessThan(got.feedback.transcript.indexOf('part 2'));
+
+  await page.click('#saveSession');
+  expect((await state(page)).sessions[0].ai.audio).toBe('both');
+});
+
+test('録音: 共有しなかったら自分の声だけ録り、同じボタンで止めて、AI にもそう伝える', async ({ page }) => {
+  await fakeMedia(page, { share: false });
+  const got = await stubLessonAI(page);
+  await go(page, 'kanpe');
+  await page.click('#kanpeRec');
+  await expect(page.locator('#kanpeRecHint')).toContainText('自分の声だけ');
+  await page.waitForTimeout(800);
+  await page.click('#kanpeRec');
+  await expect(page.locator('#view-log')).toBeVisible();
+  await expect(page.locator('#aiStatus')).toContainText('自分の声だけ');
+
+  await page.click('#aiRun');
+  await expect(page.locator('#aiResult')).toContainText('よく話せています');
+  expect(got.feedback.audio).toBe('learner_only');
+
+  // 貼り付けた文字起こしは、相手の声が入っているか分からないので伝えない
+  await page.fill('#aiPaste', 'Trainer: Hi. Me: Hello.');
+  await page.click('#aiRun');
+  await expect.poll(() => got.feedback.transcript).toBe('Trainer: Hi. Me: Hello.');
+  expect(got.feedback.audio).toBeUndefined();
+});
+
+test('録音: 共有したタブが一度も鳴らなければ、相手の声あり扱いにしない', async ({ page }) => {
+  await fakeMedia(page, { tabSilent: true });
+  const got = await stubLessonAI(page);
+  await go(page, 'kanpe');
+  await page.click('#kanpeRec');
+  await expect(page.locator('#kanpeRecHint')).toContainText('相手の声と自分の声');
+  await page.waitForTimeout(1500);
+  await page.click('#kanpeToLog');
+  await expect(page.locator('#aiStatus')).toContainText('相手の声が聞こえませんでした');
+  await page.click('#aiRun');
+  await expect(page.locator('#aiResult')).toContainText('よく話せています');
+  expect(got.feedback.audio).toBe('learner_only');
 });
