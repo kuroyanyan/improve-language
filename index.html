@@ -36,19 +36,13 @@
   <section class="view" id="view-log" aria-labelledby="tab-log">
 
     <div class="card">
-      <h2>レッスンを録る → AI が記録を埋める <span class="jp">キー設定が必要。これが主線</span></h2>
-      <div class="row">
-        <button type="button" id="recStart">🎙 録音をはじめる</button>
-        <button type="button" class="danger" id="recStop" hidden>■ 停止</button>
-        <span class="badge" id="recClock" aria-live="off">0:00</span>
-      </div>
-      <p class="hint" id="aiStatus">録音か文字起こしを渡すと、詰まったこと・単語・宣言ピースの判定・聞かれた質問を自動で記録に入れます。PC で受けるなら、スピーカーで音を出すとトレーナーの声も入ります。</p>
+      <h2>レッスンの録音 → AI が記録を埋める <span class="jp">これが主線</span></h2>
+      <p class="hint" id="aiStatus">録音はレッスンの最初に、カンペ画面の「● 録音してレッスンを始める」から。録音か文字起こしを渡すと、詰まったこと・単語・宣言ピースの判定・聞かれた質問を記録に入れます。</p>
       <label class="field">または、Notion などの文字起こしを貼り付け
         <textarea id="aiPaste" placeholder="日英が混ざった文字起こしのままで大丈夫。Claude が文脈から整理します。"></textarea>
       </label>
       <div class="row">
         <button type="button" class="primary" id="aiRun" disabled>文字起こし → AI フィードバック</button>
-        <button type="button" class="ghost" id="recSave" hidden>音声を保存</button>
       </div>
       <div id="aiResult" class="airesult" hidden></div>
     </div>
@@ -75,7 +69,7 @@
       <div class="row" id="declareExtraRow" hidden>
         <select id="declareExtra" aria-label="ほかに言えたピース"></select>
       </div>
-      <p class="hint">「見ずに言えた」が別の日に3回で卒業。読んで言えたは「まだ」。AI フィードバックを使うと先に入ります。</p>
+      <p class="hint">「見ずに言えた」が別の日に3回で卒業。読んで言えたは「まだ」。AI の見立ては上の結果に出ます。押すのは自分で。</p>
     </div>
 
     <div class="card">
@@ -196,6 +190,10 @@
 
     <div class="card">
       <h2>カンペ <span class="jp">レッスン前に開いて、そのまま読む</span></h2>
+      <div class="row tight">
+        <button type="button" class="danger" id="kanpeRec" aria-pressed="false">● 録音してレッスンを始める</button>
+      </div>
+      <p class="hint" id="kanpeRecHint">押したら MyStage のタブを選び、「タブの音声も共有する」をオンに。相手の声と自分の声を一緒に録ります（音声は保存しません）。</p>
       <div class="lessonpick">
         <select id="kanpeLesson" aria-label="カンペのレッスンを選ぶ"></select>
         <span class="badge" id="kanpeRankBadge">Rank C</span>
@@ -212,7 +210,7 @@
 
     <div class="card">
       <button type="button" class="primary" id="kanpeToLog">レッスンが終わった → 記録する</button>
-      <p class="hint">記録は30秒です。録音か文字起こしを渡せば、詰まりと単語は AI が入れます。</p>
+      <p class="hint">録音していれば、ここで止めて記録へ。記録は30秒です。詰まりと単語は AI が入れます。</p>
     </div>
 
   </section>

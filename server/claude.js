@@ -168,7 +168,9 @@ const FEEDBACK_SCHEMA = {
 
 const LEARNER_PROFILE = 'Head of HR at a trading card company in Japan; team of seven; responsible for hiring and organization; also runs a new business; hobbies: running, cooking, working out.';
 
-export function feedback({ transcript, lesson, topic, keyPhrases = [], declaredPieces = [], pieces = [] }) {
+export function feedback({ transcript, audio, lesson, topic, keyPhrases = [], declaredPieces = [], pieces = [] }) {
+  // 録音から作った文字起こしなら、相手（トレーナー）の声が入っているか。貼り付けは不明
+  const voices = audio === 'both' || audio === 'learner_only' ? audio : null;
   const system = [
     'You are an English coach reviewing a transcript of a Bizmates online lesson (Level 1).',
     'The learner is a Japanese HR manager whose goal is to work across countries in English, not to pass a test.',
@@ -176,6 +178,11 @@ export function feedback({ transcript, lesson, topic, keyPhrases = [], declaredP
     '',
     'About the transcript: it comes from automatic speech recognition on mixed Japanese/English audio.',
     'Japanese words are often mis-recognized as English and vice versa, and the two speakers are not labeled.',
+    ...(voices === 'both' ? ['The audio mixed the trainer (lesson audio) and the learner (microphone) into one track, cut into parts every 10 minutes.'] : []),
+    ...(voices === 'learner_only' ? [
+      "This audio has ONLY the learner's microphone. The trainer's voice is not in it.",
+      'Do not guess what the trainer asked: return trainer_questions as [] and trainer_question_count as 0. Label every line of cleaned_transcript as Me.',
+    ] : []),
     'Use the lesson topic and key phrases as context to reconstruct what was most likely said.',
     'Where you cannot tell, keep it short and mark [?] rather than inventing content.',
     '',
@@ -192,7 +199,7 @@ export function feedback({ transcript, lesson, topic, keyPhrases = [], declaredP
     `Lesson ${lesson}: ${topic}\nKey phrases: ${keyPhrases.join(' / ')}\n\n` +
     (declared ? `Pieces the learner declared to say in this lesson:\n${declared}\n\n` : 'Pieces declared for this lesson: none\n\n') +
     (all ? `All prepared pieces (for judging "covered"):\n${all}\n\n` : '') +
-    `Raw transcript (ASR, unlabeled speakers, JA/EN mixed):\n"""\n${transcript}\n"""`;
+    `Raw transcript (ASR, ${voices === 'learner_only' ? 'learner only' : 'unlabeled speakers'}, JA/EN mixed):\n"""\n${transcript}\n"""`;
   return callClaude({ system, user, schema: FEEDBACK_SCHEMA, maxTokens: 16000 });
 }
 

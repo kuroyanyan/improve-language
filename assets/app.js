@@ -1,7 +1,7 @@
 // Bizmates Log — レッスン後の記録と、次回の5分予習。
 // 保存先は localStorage だけ。バックエンドもビルドも無し。
 
-import { setupAI, pieceToEnglish } from './ai.js';
+import { setupAI, pieceToEnglish, finishLessonRecording } from './ai.js';
 import { setupGate, ensureSession } from './api.js';
 import { setupPieces, renderPieces, pickTodayPiece, recordPieceResult, activePieces, graduatedPieces, firstLine, validatePiece, lines as pieceLines } from './pieces.js';
 import { setupSample, renderSampleSummary, bestOf } from './sample.js';
@@ -247,7 +247,8 @@ function switchRank(rank) {
 
 // ---------------------------------------------------------------- 記録タブ
 
-const draft = { rating: 0, stucks: [], words: [], ai: null, talkMin: null, pieceResults: {}, extraPieces: [] };
+// pieceResults は本人が押した回収、pieceAI は AI の判定（先に押さず、別に残す）
+const draft = { rating: 0, stucks: [], words: [], ai: null, talkMin: null, pieceResults: {}, pieceAI: {}, extraPieces: [] };
 
 /** このレッスン向けに宣言したピース。予習が無ければ直近3日の予習から。 */
 function declaredPieces(lesson) {
@@ -448,7 +449,7 @@ function saveSession() {
   const lesson = Number($('logLesson').value);
   const declared = declaredPieces(lesson)
     .filter((p) => draft.pieceResults[p.id] === true || draft.pieceResults[p.id] === false)
-    .map((p) => ({ id: p.id, en: firstLine(p.en), ok: draft.pieceResults[p.id] === true }));
+    .map((p) => ({ id: p.id, en: firstLine(p.en), ok: draft.pieceResults[p.id] === true, ...(typeof draft.pieceAI[p.id] === 'boolean' ? { ai: draft.pieceAI[p.id] } : {}) }));
   const session = {
     id: uid(),
     date: today(),
@@ -484,6 +485,7 @@ function saveSession() {
   draft.rating = 0;
   draft.talkMin = null;
   draft.pieceResults = {};
+  draft.pieceAI = {};
   draft.extraPieces = [];
   draft.stucks = [];
   draft.words = [];
@@ -1152,7 +1154,7 @@ function setupNav() {
   for (const b of document.querySelectorAll('.fstep')) {
     b.addEventListener('click', () => switchView(b.dataset.step));
   }
-  $('kanpeToLog').addEventListener('click', () => switchView('log'));
+  $('kanpeToLog').addEventListener('click', async () => { await finishLessonRecording(); switchView('log'); });
   $('menuBtn').addEventListener('click', () => setMenu($('drawer').hidden));
   $('menuClose').addEventListener('click', () => setMenu(false));
   $('backdrop').addEventListener('click', () => setMenu(false));
@@ -1183,6 +1185,7 @@ function boot(isReload) {
     draft.rating = 0;
     draft.talkMin = null;
     draft.pieceResults = {};
+    draft.pieceAI = {};
     draft.extraPieces = [];
     draft.stucks = [];
     draft.words = [];
@@ -1264,14 +1267,15 @@ async function main() {
       for (const w of fb.words || []) { if (w.en && !seenW.has(w.en)) { seenW.add(w.en); draft.words.push({ en: w.en, ja: w.ja || '' }); } }
       renderDraftLists();
     },
-    // AI が「宣言ピースを言えたか」を判定したら、回収ボタンに先に入れておく（本人が上書きできる）
+    // AI の「宣言ピースを言えたか」は、回収ボタンを先に押さずに別に残す。押すのは本人
+    // （自己申告と AI の判定を突き合わせるため。H-20260915_piece_declare_recover の交絡欄）
     onPieceUse(results, declared) {
       for (const r of results) {
         const hit = declared.find((d) => firstLine(d.en) === r.piece || d.en.replace(/\n/g, ' / ').startsWith(r.piece));
-        if (hit && draft.pieceResults[hit.id] === undefined) draft.pieceResults[hit.id] = !!r.used;
+        if (hit) draft.pieceAI[hit.id] = !!r.used;
       }
-      renderDeclared();
     },
+    showLog() { switchView('log'); },
     toast,
   });
   boot(false);

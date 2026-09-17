@@ -56,6 +56,8 @@ function sessionRow(s) {
     trainer_q: ai.trainer_question_count ?? tq.length,
     trainer_q_covered: tq.filter((q) => q.covered).length,
     learner_q: ai.learner_question_count ?? null,
+    audio: ai.audio || null, // 録音から: both（相手の声あり）/ learner_only。貼り付けは null
+    declared_detail: declared.map((d) => ({ ok: !!d.ok, ai: typeof d.ai === 'boolean' ? d.ai : null })),
   };
 }
 
