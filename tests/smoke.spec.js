@@ -287,6 +287,55 @@ test('ダークテーマでも描画される', async ({ page }) => {
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(16, 23, 30)');
 });
 
+test('予習: Challenge は評価の5点・復習範囲の Key Phrases（日本語つき）・Situation を出し、「読み込み中」を残さない', async ({ page }) => {
+  const regular = (n) => `<section class="card"><h3>今日の型 <span class="jp">これさえ守れば勝ち</span></h3><p>型 L${n}</p></section>`
+    + `<section class="card"><h3>Key Phrases <span class="jp">教材で青字のやつ</span></h3><ul class="kp"><li><span class="en">Phrase of L${n} 〜</span><span class="jp">L${n} の日本語</span></li></ul></section>`
+    + `<section class="card"><h3>準備の3質問 <span class="jp">ロールプレイ前に聞かれる</span></h3><p>Q L${n}</p></section>`
+    + `<section class="card"><h3>Act <span class="jp">仕上げのロールプレイ</span></h3><p>Act L${n}</p></section>`;
+  const challenge = '<section class="card"><h3>評価される5点 <span class="jp">トレーナーが星をつける基準</span></h3><p>5 points</p></section>'
+    + '<section class="card"><h3>Situation 1 <span class="jp">チームの役割</span></h3><p>S1</p></section>'
+    + '<section class="card"><h3>Situation 2 <span class="jp">重要タスク</span></h3><p>S2</p></section>'
+    + '<section class="card"><h3>5分を持たせるコツ <span class="jp">沈黙対策</span></h3><p>tips</p></section>';
+  await page.route('**/api/kanpe**', (route) => {
+    const n = Number(new URL(route.request().url()).searchParams.get('lesson'));
+    if (n === 12) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'カンペがまだありません（Rank C Lesson 12）' }) });
+    const html = n === 15 ? challenge : n === 3 ? '<section class="card"><h3>See</h3><p>only see</p></section>' : regular(n);
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ html, common: '' }) });
+  });
+  await go(page, 'prep');
+  await page.selectOption('#prepLesson', '15');
+
+  // ② 評価される5点 → 復習範囲（L11–14）の Key Phrases → コツ。読めなかった L12 は飛ばす
+  const pattern = page.locator('#prepPattern');
+  await expect(pattern.locator('section.card h3')).toHaveText([/^評価される5点/, /^Key Phrases\s+L11 /, /^Key Phrases\s+L13 /, /^Key Phrases\s+L14 Talking About Your Workload/, /^5分を持たせるコツ/]);
+  await expect(pattern).toContainText('L11 の日本語');
+  await expect(pattern).toContainText('L14 の日本語');
+  await expect(pattern).not.toContainText('Situation');
+  await expect(pattern).not.toContainText('読み込み中');
+
+  // ③ Challenge は Act ではなく Situation 2本が本番
+  const act = page.locator('#prepAct');
+  await expect(act.locator('section.card h3')).toHaveText([/^Situation 1/, /^Situation 2/]);
+  await expect(act).not.toContainText('読み込み中');
+
+  // 通常レッスンで、出す項目がカンペに無いとき
+  await page.selectOption('#prepLesson', '3');
+  await expect(act).toContainText('ここに出す項目がありません');
+  await expect(pattern).toContainText('ここに出す項目がありません');
+  await expect(pattern).not.toContainText('読み込み中');
+
+  // 通常レッスンで、カンペが読めないとき
+  await page.selectOption('#prepLesson', '12');
+  await expect(act).toContainText('カンペを読めませんでした');
+  await expect(pattern).toContainText('カンペを読めませんでした');
+  await expect(pattern).not.toContainText('読み込み中');
+
+  // 通常レッスンは今まで通り
+  await page.selectOption('#prepLesson', '14');
+  await expect(pattern.locator('section.card h3')).toHaveText([/^今日の型/, /^Key Phrases/]);
+  await expect(act.locator('section.card h3')).toHaveText([/^準備の3質問/, /^Act/]);
+});
+
 test('今日の流れ: 起動はカンペ、記録で②、予習で③が終わる', async ({ page }) => {
   await page.route('**/api/kanpe**', (route) => route.fulfill({
     status: 200, contentType: 'application/json',
