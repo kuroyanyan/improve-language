@@ -37,15 +37,16 @@ export function sanitize(html) {
   return doc.body.firstChild;
 }
 
-/** カンペ HTML から、見出しが titles のどれかで始まる section.card だけを取り出す（予習タブ用）。 */
+/** カンペ HTML から、見出しが titles のどれかで始まる section.card だけを取り出す（予習タブ用）。titles は見出しを受け取る関数でもよい。 */
 export function extractKanpeSections(html, titles) {
   const root = sanitize(html);
+  const match = typeof titles === 'function' ? titles : (t) => titles.some((x) => t.startsWith(x));
   const out = [];
   for (const sec of root.querySelectorAll('section.card')) {
     const h = sec.querySelector('h3');
     if (!h) continue;
     const t = ((h.childNodes[0] && h.childNodes[0].textContent) || h.textContent || '').trim();
-    if (titles.some((x) => t.startsWith(x))) out.push(sec);
+    if (match(t)) out.push(sec);
   }
   return out;
 }

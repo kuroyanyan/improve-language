@@ -537,42 +537,70 @@ function renderPrepStucks() {
   for (const x of last.stucks.slice(0, 5)) box.appendChild(prow(x.ja, x.fix || '（正しい言い方は未記入。自分の言葉で言ってみる）'));
 }
 
-/** カンペから、指定の見出しのカードを箱に流し込む。取れなければ代わりを出す。 */
-async function fillFromKanpe(boxId, titles, fallback) {
+/**
+ * カンペから取り出したカードを箱に流し込む。読み込みの間は fallback を出しておく。
+ * 「読み込み中」の行は、取れても、並べるものが無くても、読めなくても、必ず本当のことに書き換える。
+ */
+async function fillFromKanpe(boxId, fallback, pick) {
   const box = $(boxId);
   const token = (kanpeToken[boxId] += 1);
   const lesson = prepLesson();
   box.replaceChildren();
   fallback(box);
+  const status = el('p', 'hint', 'カンペを読み込み中…');
+  box.appendChild(status);
   try {
-    const k = await getKanpe(currentRank(), lesson);
+    const cards = await pick(await getKanpe(currentRank(), lesson));
     if (token !== kanpeToken[boxId]) return;
-    const secs = extractKanpeSections(k.html, titles);
-    if (!secs.length) return;
-    box.replaceChildren();
-    for (const sec of secs) box.appendChild(sec);
+    if (cards.length) box.replaceChildren(...cards);
+    else status.textContent = 'このレッスンのカンペには、ここに出す項目がありません（📖 カンペ全文 で見られます）';
   } catch (e) {
     if (token !== kanpeToken[boxId]) return;
-    box.appendChild(el('p', 'hint', `カンペを読めませんでした: ${e.message}`));
+    status.textContent = `カンペを読めませんでした: ${e.message}`;
   }
+}
+
+const isChallenge = (l) => !!l && l.type === 'challenge';
+
+/** Challenge が復習する通常レッスン（直前の Challenge の次から、このレッスンの手前まで）。 */
+function reviewedLessons(l) {
+  const before = lessons.filter((x) => x.lesson < l.lesson);
+  const from = Math.max(0, ...before.filter(isChallenge).map((x) => x.lesson));
+  return before.filter((x) => x.lesson > from && !isChallenge(x));
+}
+
+/** 復習範囲の各レッスンの Key Phrases カード（日本語つき）を、そのレッスンのカンペからそのまま持ってくる。読めないレッスンは飛ばす。 */
+async function reviewedKeyPhraseCards(l) {
+  const got = await Promise.allSettled(reviewedLessons(l).map(async (x) => {
+    const [card] = extractKanpeSections((await getKanpe(currentRank(), x.lesson)).html, ['Key Phrases']);
+    const sub = card && card.querySelector('h3 .jp');
+    if (sub) sub.textContent = `L${x.lesson} ${x.topic}`;
+    return card;
+  }));
+  return got.map((r) => r.status === 'fulfilled' && r.value).filter(Boolean);
 }
 
 function renderPrepPattern() {
   const l = lessonById.get(prepLesson());
-  return fillFromKanpe('prepPattern', ['今日の型', 'Key Phrases'], (box) => {
+  return fillFromKanpe('prepPattern', (box) => {
     if (l && l.keyPhrases.length) {
       const ul = el('ul', 'kp');
       for (const x of l.keyPhrases) { const li = el('li'); li.appendChild(el('span', 'en', x)); ul.appendChild(li); }
       box.appendChild(ul);
     }
-    box.appendChild(el('p', 'hint', 'カンペを読み込み中…'));
+  }, async (k) => {
+    if (!isChallenge(l)) return extractKanpeSections(k.html, ['今日の型', 'Key Phrases']);
+    // Challenge のカンペには今日の型も Key Phrases も無い。通常レッスンの「型 → Key Phrases」に揃えて、
+    // 評価される5点 → 復習範囲の Key Phrases → コツ（見出しはカンペごとに違うので「Situation 以外」で拾う）
+    const own = extractKanpeSections(k.html, (t) => !t.startsWith('Situation'));
+    return [...own.slice(0, 1), ...(await reviewedKeyPhraseCards(l)), ...own.slice(1)];
   });
 }
 
 function renderPrepAct() {
-  return fillFromKanpe('prepAct', ['準備の', 'Act'], (box) => {
-    box.appendChild(el('p', 'hint', 'カンペを読み込み中…（次回 Act で聞かれることが出ます）'));
-  });
+  const l = lessonById.get(prepLesson());
+  const titles = isChallenge(l) ? ['Situation'] : ['準備の', 'Act'];
+  return fillFromKanpe('prepAct', () => {}, (k) => extractKanpeSections(k.html, titles));
 }
 
 /** 宣言中のピース。まだ無ければ、練習中から今日の1つを選ぶ。 */
