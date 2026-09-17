@@ -9,7 +9,7 @@
 | Service | `app` — `81064729-5824-4b2e-8303-ad8875b4d5d8` |
 | Environment | production — `b2cb1ba0-9f62-4d88-833f-724795827a0b` |
 | URL | https://app-production-cbe53.up.railway.app |
-| Source | GitHub `kuroyanyan/improve-language`（PR #1 merge 後に branch を `main` へ切り替える） |
+| Source | GitHub `kuroyanyan/improve-language` の `main`（2026-09-17 に PR ブランチから切り替え）。merge すると、そのまま本番にデプロイされる |
 
 ## 環境変数
 
@@ -31,4 +31,5 @@
 - **ビルダーを固定する。** ルートに `index.html` があるため、指定が無いと Railway が「静的サイト」と誤検出し、Node サーバーではなく Caddy でファイル配信してしまう（全 API が 404、ログに `fileserver.notFound` と `Server: Caddy`）。`railway.json` の `build.builder = NIXPACKS` と `nixpacks.toml` の `providers = ["node"]` の両方で明示している。
 - `railway.json` に `buildCommand` を書かない。Nixpacks の install 段階の `npm ci` と衝突し、`node_modules/.cache` の EBUSY でビルドが落ちる（2026-09-16 実測）。ビルド工程は不要。
 - push で自動デプロイされないときは、Railway 側でソースを繋ぎ直すと最新コミットでビルドが走る。
+- **main への merge は、そのまま本番デプロイになる。** レッスンの直前（目安30分前から）は merge しない。ビルド中や失敗時にカンペが開けなくなるため。
 - 使いすぎ防止として、AI 呼び出しは 1 時間あたり 60 回まで。超えると 429 を返す。
