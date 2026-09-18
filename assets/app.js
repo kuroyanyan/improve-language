@@ -1,9 +1,9 @@
 // Bizmates Log — レッスン後の記録と、次回の5分予習。
 // 保存先は localStorage だけ。バックエンドもビルドも無し。
 
-import { setupAI, pieceToEnglish, finishLessonRecording } from './ai.js';
+import { setupAI, finishLessonRecording } from './ai.js';
 import { setupGate, ensureSession } from './api.js';
-import { setupPieces, renderPieces, pickTodayPiece, recordPieceResult, activePieces, graduatedPieces, firstLine, validatePiece, lines as pieceLines } from './pieces.js';
+import { setupPieces, renderPieces, pickTodayPiece, recordPieceResult, activePieces, graduatedPieces, firstLine, validatePiece, pieceToEnglish, lines as pieceLines } from './pieces.js';
 import { setupSample, renderSampleSummary, bestOf } from './sample.js';
 import { setupSync, scheduleSync, renderSyncStatus, mondayOf, loadRemoteState, syncNow } from './sync.js';
 import { setupKanpe, openKanpe, renderKanpe, syncKanpeRank, getKanpe, extractKanpeSections } from './kanpe.js';
@@ -780,16 +780,20 @@ function setupPrepTab() {
   $('prepActAI').addEventListener('click', async () => {
     const ja = $('prepActJa').value.trim();
     if (!ja) { $('prepActJa').focus(); return; }
+    const note = (text, working = false) => {
+      $('prepActNote').textContent = text;
+      $('prepActNote').classList.toggle('working', working);
+    };
     $('prepActAI').disabled = true;
-    $('prepActNote').textContent = '英語にしています…';
+    note('英語にしています…', true);
     try {
       const r = await pieceToEnglish(ja, 'work');
       $('prepActEn').value = (r.en_lines || []).join('\n');
       const rare = (r.rare_words || []).filter((w) => w.word);
-      $('prepActNote').textContent = (r.note_ja || '')
-        + (rare.length ? `　難しめの語: ${rare.map((w) => (w.simpler ? `${w.word} → ${w.simpler}` : w.word)).join(', ')}` : '');
+      note((r.note_ja || '')
+        + (rare.length ? `　難しめの語: ${rare.map((w) => (w.simpler ? `${w.word} → ${w.simpler}` : w.word)).join(', ')}` : ''));
     } catch (e) {
-      $('prepActNote').textContent = e.message;
+      note(e.message);
     } finally {
       $('prepActAI').disabled = false;
     }
