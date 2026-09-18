@@ -28,6 +28,19 @@ async function stubState(page, initial = null) {
   return puts;
 }
 
+/** 「予習した」を押し、今日の終わりのポップアップを閉じるところまで。 */
+async function endPrepDay(page, { answer = 'yes' } = {}) {
+  await page.click('#prepDone');
+  await expect(page.locator('#celebrate')).toBeVisible();
+  if (answer === 'yes') {
+    await page.click('#celebrateYes');
+    await page.click('#celebrateClose');
+  } else {
+    await page.click('#celebrateLater');
+  }
+  await expect(page.locator('#celebrate')).toBeHidden();
+}
+
 async function addPiece(page, ja = PIECE_JA, en = PIECE_EN) {
   await go(page, 'cards');
   await page.fill('#pieceJa', ja);
@@ -80,7 +93,10 @@ test('ピース: 質問なしは保存できない → 作成 → 予習で宣�
   await go(page, 'prep');
   await expect(page.locator('#prepPiece .cue.piece .en')).toContainText('Lately, I think a lot');
   await page.click('#prepDone');
-  await expect(page.locator('#toast')).toContainText('次のレッスンでこれを言う');
+  await page.click('#celebrateYes');
+  await expect(page.locator('#celebrateDeclared')).toContainText('次のレッスンでこれを言う');
+  await expect(page.locator('#celebrateDeclared')).toContainText('Lately, I think a lot');
+  await page.click('#celebrateClose');
 
   await go(page, 'log');
   await expect(page.locator('#declaredBox .item')).toHaveCount(1);
@@ -110,7 +126,7 @@ test('予習で作った文は履歴に残る（古い sentence だけの記録�
   await addPiece(page);
   await go(page, 'prep');
   await page.selectOption('#prepLesson', '7');
-  await page.click('#prepDone');
+  await endPrepDay(page);
 
   // まだ受けていないレッスンなので、履歴の先頭に出る
   await go(page, 'history');
@@ -148,7 +164,7 @@ test('Rank 切替で教材が変わり、記録はランク付きで残る', asy
 test('AI（モック）: 詰まり・単語が自動で下書きに入り、宣言ピースの AI 判定は押さずに別に残る', async ({ page }) => {
   await addPiece(page);
   await go(page, 'prep');
-  await page.click('#prepDone');
+  await endPrepDay(page);
 
   await page.route('**/api/ai/feedback', (route) => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -366,7 +382,7 @@ test('今日の流れ: 起動はカンペ、記録で②、予習で③が終わ
   await expect(page.locator('#prepPattern')).toContainText('今日の型');
   await expect(page.locator('#prepPattern')).not.toContainText('読み込み中');
 
-  await page.click('#prepDone');
+  await endPrepDay(page);
   await expect(page.locator('#flowBar')).toHaveClass(/all-done/);
 
   // 開き直すと、今日はもう流れが終わっている
@@ -396,7 +412,7 @@ test('Act の想定問答: 日本語 → 英語 → 次回これを言う', asyn
   expect(s.pieces[0].fromLesson).toMatchObject({ rank: 'C' });
 
   // 宣言したものが、次の記録で回収できる
-  await page.click('#prepDone');
+  await endPrepDay(page);
   await go(page, 'log');
   await expect(page.locator('#declaredBox .item')).toContainText('Hiring is my job.');
 });
@@ -522,4 +538,36 @@ test('録音: 共有したタブが一度も鳴らなければ、相手の声あ
   await page.click('#aiRun');
   await expect(page.locator('#aiResult')).toContainText('よく話せています');
   expect(got.feedback.audio).toBe('learner_only');
+});
+
+test('今日の終わり: 予習したら「終わりにしますか」→ ねぎらいとワンフレーズとクラッカー', async ({ page }) => {
+  await go(page, 'prep');
+  await page.click('#prepDone');
+
+  // まず聞かれる。まだ続けるなら、そのまま閉じる
+  const box = page.locator('#celebrate');
+  await expect(box).toBeVisible();
+  await expect(page.locator('#celebrateTitle')).toContainText('終わりにしますか');
+  await page.click('#celebrateLater');
+  await expect(box).toBeHidden();
+  expect((await state(page)).preps[0].end).toBe('continue');
+
+  // もう一度。今度は最後まで見る
+  await page.click('#prepDone');
+  await page.click('#celebrateYes');
+  await expect(page.locator('#celebrateDone')).toBeVisible();
+  const praise = await page.locator('#celebratePraise').textContent();
+  expect(praise.trim().length).toBeGreaterThan(0);
+  await expect(page.locator('#celebratePhrase')).not.toBeEmpty();
+  await expect(page.locator('#celebratePop i').first()).toBeVisible(); // クラッカー
+  await page.click('#celebrateClose');
+  await expect(box).toBeHidden();
+  expect((await state(page)).preps[1].end).toBe('done');
+
+  // ねぎらいの一言は前回と変わる
+  await page.click('#prepDone');
+  await page.click('#celebrateYes');
+  expect((await page.locator('#celebratePraise').textContent()).trim()).not.toBe(praise.trim());
+  await page.keyboard.press('Escape');
+  await expect(box).toBeHidden();
 });

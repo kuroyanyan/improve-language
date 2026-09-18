@@ -346,6 +346,30 @@
   <button type="button" id="tab-history" data-view="history"><span class="ico">📈</span><span class="lbl">履歴<small>今週・記録証・設定・同期</small></span></button>
 </nav>
 
+<div class="celebrate" id="celebrate" hidden role="dialog" aria-modal="true" aria-labelledby="celebrateTitle">
+  <div class="celebrate-card">
+    <div class="pop" id="celebratePop" aria-hidden="true"></div>
+    <div id="celebrateAsk">
+      <h2 id="celebrateTitle">今日の学習、これで終わりにしますか？</h2>
+      <p class="hint">カンペ → 記録 → 5分予習。今日の分はここまでです。</p>
+      <div class="row">
+        <button type="button" class="primary" id="celebrateYes">はい、今日はここまで</button>
+        <button type="button" class="ghost" id="celebrateLater">まだ続ける</button>
+      </div>
+    </div>
+    <div id="celebrateDone" hidden>
+      <h2>🎉 おつかれさまでした</h2>
+      <div id="celebratePraise"></div>
+      <h4>今日のワンフレーズ</h4>
+      <div id="celebratePhrase"></div>
+      <div id="celebrateDeclared"></div>
+      <div class="row">
+        <button type="button" class="primary" id="celebrateClose">閉じる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="gate" id="gate" hidden>

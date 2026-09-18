@@ -580,6 +580,21 @@ details.log .inner h4 { margin-top: 6px; }
 .kanpe .goal { color: var(--muted); font-size: 0.92rem; margin: 0; }
 .kanpe .totop { display: none; }
 
+/* ---------- 今日の終わりのお祝い ---------- */
+.celebrate { position: fixed; inset: 0; z-index: 45; background: rgba(16, 23, 30, 0.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.celebrate[hidden] { display: none; }
+.celebrate-card {
+  position: relative; overflow: hidden; width: 100%; max-width: 420px; text-align: center;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 22px 20px;
+}
+.celebrate-card h2 { font-family: "Lora", Georgia, serif; font-size: 1.15rem; margin: 0 0 10px; }
+.celebrate-card h4 { margin: 18px 0 6px; font-size: 0.78rem; letter-spacing: 0.04em; color: var(--muted); }
+.celebrate-card .row { justify-content: center; margin-top: 18px; }
+.celebrate-card .cue { margin: 0; }
+.celebrate .pop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.celebrate .pop i { position: absolute; top: -14px; width: 8px; height: 13px; border-radius: 2px; animation: pop-fall 1.9s ease-in forwards; }
+@keyframes pop-fall { to { transform: translateY(460px) rotate(540deg); opacity: 0; } }
+
 /* ---------- 録音中の表示と、合言葉のゲート ---------- */
 .reclive {
   font-size: 0.8rem; font-weight: 700; color: var(--danger);

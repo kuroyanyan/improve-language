@@ -754,13 +754,121 @@ function resetPrep(silent) {
 function finishPrep() {
   const lesson = prepLesson();
   const pieceId = prep.pieceId;
-  state.preps.push({ id: uid(), date: today(), rank: currentRank(), lesson, pieceId: pieceId || null });
+  const entry = { id: uid(), date: today(), rank: currentRank(), lesson, pieceId: pieceId || null };
+  state.preps.push(entry);
   save();
   resetPrep(true);
   renderDeclared();
   renderAll();
-  toast(pieceId ? '予習を記録しました 🎉 次のレッスンでこれを言う' : '予習を記録しました 🎉');
-  buzz([60, 80, 60, 80, 120]);
+  buzz(30);
+  openCelebrate(entry.id);
+}
+
+// ---------------------------------------------------------------- 今日の終わり
+// 予習まで終えたら、ねぎらいと今日のワンフレーズを出す。
+// 連続日数や学習量は数えない（LOOP.md G0）。責める表現も使わない（G10）。
+
+const PRAISE = [
+  { en: 'You showed up today. That is the hard part.', ja: '今日やった。そこが一番むずかしいところ' },
+  { en: 'Small steps every day beat one big step.', ja: '小さく毎日のほうが、大きく一度より効く' },
+  { en: 'Your English got a little more yours today.', ja: '今日、英語が少し自分のものになった' },
+  { en: 'Nice work. Now go and use it tomorrow.', ja: 'おつかれさま。明日それを使ってみよう' },
+  { en: 'You did the reps. The words will come.', ja: '回数を踏んだ。言葉はあとからついてくる' },
+  { en: 'Preparing your own story is real practice.', ja: '自分の話を用意するのが、本当の練習' },
+  { en: 'One sentence today is one less pause tomorrow.', ja: '今日の一文が、明日の沈黙を一つ減らす' },
+  { en: 'Good. You chose your words before anyone asked.', ja: 'いい。聞かれる前に、言うことを決めた' },
+  { en: 'That is enough for today. Rest counts too.', ja: '今日はこれで十分。休むのも練習のうち' },
+  { en: 'You are building your own phrasebook, line by line.', ja: '自分だけのフレーズ集が、一行ずつ増えている' },
+  { en: 'Keep it simple. Simple English is strong English.', ja: '簡単でいい。簡単な英語は強い英語' },
+  { en: 'Tomorrow you will say it without looking.', ja: '明日は、見ないで言える' },
+];
+
+const PHRASES = [
+  { en: 'Let me think for a second.', ja: '少し考えさせてください' },
+  { en: 'How do you say this in English?', ja: 'これは英語で何と言いますか？' },
+  { en: 'Can I say that in a different way?', ja: '言い方を変えてもいいですか？' },
+  { en: 'That is a good question.', ja: 'いい質問ですね' },
+  { en: 'What about you?', ja: 'あなたはどうですか？' },
+  { en: 'I am not sure yet. I will check it.', ja: 'まだ分かりません。確認します' },
+  { en: 'Could you say that again, slowly?', ja: 'もう一度、ゆっくり言ってもらえますか？' },
+  { en: 'In short, my point is simple.', ja: '一言でいうと、話はシンプルです' },
+  { en: 'Let me give you an example.', ja: '例をあげますね' },
+  { en: 'That is all from me. Any questions?', ja: '私からは以上です。質問はありますか？' },
+  { en: 'I see what you mean.', ja: '言いたいことは分かります' },
+  { en: 'Can we start the lesson a bit quickly?', ja: '少し早めにレッスンを始められますか？' },
+];
+
+const CELEBRATE_KEY = 'bizmates-log/celebrate';
+let celebrating = null; // 表示中の予習の id
+
+/** 前回と違うものを選ぶ（毎回同じ一言にならないように）。 */
+function pickFresh(list, key) {
+  let last = {};
+  try { last = JSON.parse(localStorage.getItem(CELEBRATE_KEY) || '{}'); } catch { /* 無視 */ }
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === last[key]) i = (i + 1) % list.length;
+  last[key] = i;
+  try { localStorage.setItem(CELEBRATE_KEY, JSON.stringify(last)); } catch { /* 無視 */ }
+  return list[i];
+}
+
+/** クラッカー。prefers-reduced-motion のときは既存の指定でアニメーションが止まる。 */
+function popConfetti() {
+  const box = $('celebratePop');
+  box.replaceChildren();
+  const colors = ['#0e6db4', '#5aa9e6', '#e8a33d', '#4cb782', '#e4738f'];
+  for (let i = 0; i < 36; i += 1) {
+    const bit = el('i');
+    bit.style.left = `${Math.random() * 100}%`;
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDelay = `${Math.random() * 0.5}s`;
+    box.appendChild(bit);
+  }
+  setTimeout(() => box.replaceChildren(), 2600);
+}
+
+/** 最後まで見たか（done）、閉じたか（continue）を予習に残す。演出が邪魔になっていないかの判定に使う。 */
+function endPrep(how) {
+  const p = state.preps.find((x) => x.id === celebrating);
+  if (p && !p.end) { p.end = how; save(); }
+}
+
+function closeCelebrate(how = 'continue') {
+  endPrep(how);
+  $('celebrate').hidden = true;
+  celebrating = null;
+}
+
+function openCelebrate(prepId) {
+  celebrating = prepId;
+  $('celebrateAsk').hidden = false;
+  $('celebrateDone').hidden = true;
+  $('celebrate').hidden = false;
+  $('celebrateYes').focus();
+}
+
+function setupCelebrate() {
+  $('celebrateYes').addEventListener('click', () => {
+    const praise = pickFresh(PRAISE, 'praise');
+    const phrase = pickFresh(PHRASES, 'phrase');
+    $('celebratePraise').replaceChildren(cueBlock(praise.en, praise.ja));
+    $('celebratePhrase').replaceChildren(cueBlock(phrase.en, phrase.ja));
+    const prepRec = state.preps.find((x) => x.id === celebrating);
+    const piece = prepRec && prepRec.pieceId ? state.pieces.find((x) => x.id === prepRec.pieceId) : null;
+    const box = $('celebrateDeclared');
+    box.replaceChildren();
+    if (piece) box.append(el('h4', null, '次のレッスンでこれを言う'), cueBlock(firstLine(piece.en), firstLine(piece.ja)));
+    $('celebrateAsk').hidden = true;
+    $('celebrateDone').hidden = false;
+    popConfetti();
+    buzz([60, 80, 60, 80, 120]);
+    endPrep('done');
+    $('celebrateClose').focus();
+  });
+  $('celebrateLater').addEventListener('click', () => closeCelebrate('continue'));
+  $('celebrateClose').addEventListener('click', () => closeCelebrate('done'));
+  $('celebrate').addEventListener('click', (e) => { if (e.target === $('celebrate')) closeCelebrate(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('celebrate').hidden) closeCelebrate(); });
 }
 
 function setupPrepTab() {
@@ -1238,6 +1346,7 @@ async function main() {
   setupNav();
   setupLogTab();
   setupPrepTab();
+  setupCelebrate();
   setupCardsTab();
   setupHistoryTab();
   setupPieces(ctx);
