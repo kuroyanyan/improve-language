@@ -9,7 +9,7 @@
 | Service | `app` — `81064729-5824-4b2e-8303-ad8875b4d5d8` |
 | Environment | production — `b2cb1ba0-9f62-4d88-833f-724795827a0b` |
 | URL | https://app-production-cbe53.up.railway.app |
-| Source | GitHub `kuroyanyan/improve-language` の `main`（2026-09-17 に PR ブランチから切り替え）。merge すると、そのまま本番にデプロイされる |
+| Source | GitHub `kuroyanyan/improve-language` の `main`（2026-09-17 に PR ブランチから切り替え）。**push / merge では自動デプロイされない**（下の落とし穴） |
 
 ## 環境変数
 
@@ -28,8 +28,12 @@
 
 ## 落とし穴
 
-- **ビルダーを固定する。** ルートに `index.html` があるため、指定が無いと Railway が「静的サイト」と誤検出し、Node サーバーではなく Caddy でファイル配信してしまう（全 API が 404、ログに `fileserver.notFound` と `Server: Caddy`）。`railway.json` の `build.builder = NIXPACKS` と `nixpacks.toml` の `providers = ["node"]` の両方で明示している。
+- **ビルダーを固定する。** ルートに `index.html` があるため、指定が無いと Railway が「静的サイト」と誤検出し、Node サーバーではなく Caddy でファイル配信してしまう（全 API が 404、ログに `fileserver.notFound` と `Server: Caddy`）。`railway.json` の `build.builder = NIXPACKS` と `nixpacks.toml` の `providers = ["node"]` の両方で明示している。（2026-09-18 時点の Railway 側の表示は `RAILPACK` だが、Node として起動しており誤検出は再現していない）
 - `railway.json` に `buildCommand` を書かない。Nixpacks の install 段階の `npm ci` と衝突し、`node_modules/.cache` の EBUSY でビルドが落ちる（2026-09-16 実測）。ビルド工程は不要。
 - push で自動デプロイされないときは、Railway 側でソースを繋ぎ直すと最新コミットでビルドが走る。
-- **main への merge は、そのまま本番デプロイになる。** レッスンの直前（目安30分前から）は merge しない。ビルド中や失敗時にカンペが開けなくなるため。
+- **merge しただけでは本番に出ない。**（2026-09-18 実測: PR を3本 merge しても5分以上デプロイが走らず、最後のデプロイは前日のまま）
+  出すには Railway でソースを繋ぎ直す（`connect-service-source` に repo と branch=main）。繋ぎ直すと main の最新がビルドされる。
+  `describe-service` の `config.source` に branch が入っていないので、自動デプロイを直すなら Railway の画面で Source の branch・Auto Deploy・GitHub App のアクセス範囲を確認する（画面での作業）。
+- デプロイはレッスンの直前（目安30分前から）に走らせない。ビルド中や失敗時にカンペが開けなくなるため。
+- 反映後は一度**強制リロード**する。`index.html` は毎回取りに行くが、`assets/*` は5分キャッシュ（`max-age=300`）なので、新しい HTML と古い JS が混ざると壊れることがある。
 - 使いすぎ防止として、AI 呼び出しは 1 時間あたり 60 回まで。超えると 429 を返す。
