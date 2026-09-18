@@ -150,6 +150,13 @@ function paintRecButton() {
   b.setAttribute('aria-pressed', String(!!rec.handle));
 }
 
+/** 記録タブの状態表示。working の間は色を変えて、待ちなのが分かるようにする。 */
+function sayStatus(text, working = false) {
+  const el = $('aiStatus');
+  el.textContent = text;
+  el.classList.toggle('working', !!working);
+}
+
 /** 録音中なら止めて、記録タブで文字起こしに回せる状態にする。録音していなければ何もしない。 */
 export async function finishLessonRecording() {
   if (!rec.handle) return;
@@ -168,9 +175,9 @@ export async function finishLessonRecording() {
   const took = fmt(Date.now() - rec.startedAt);
   const voices = rec.audio === 'both' ? `相手の声あり${rec.tabEnded ? '・途中で共有が止まった' : ''}`
     : rec.tabSilent ? '相手の声が聞こえませんでした。共有したタブが違ったかもしれません・自分の声だけ' : '自分の声だけ';
-  $('aiStatus').textContent = rec.parts.length
+  sayStatus(rec.parts.length
     ? `録音 ${took}（${voices}・${rec.parts.length}つに区切って文字起こしします）。「文字起こし → AI フィードバック」でどうぞ`
-    : '音声が取れませんでした';
+    : '音声が取れませんでした');
   $('aiRun').disabled = !(rec.parts.length || $('aiPaste').value.trim());
 }
 
@@ -206,8 +213,7 @@ export const scoreSample = (payload) => apiSend('/api/ai/sample', payload);
  *   toast(msg)
  */
 export function setupAI(hooks) {
-  const status = $('aiStatus');
-  const say = (m) => { status.textContent = m; };
+  const say = sayStatus;
 
   // カンペ画面の録音ボタン。録音中はもう一度押すと止めて記録へ
   $('kanpeRec').addEventListener('click', async () => {
@@ -248,7 +254,7 @@ export function setupAI(hooks) {
       if (!transcript && rec.parts.length) {
         const texts = [];
         for (const [i, part] of rec.parts.entries()) {
-          say(`文字起こし中… ${i + 1}/${rec.parts.length}（数十秒ずつ）`);
+          say(`文字起こし中… ${i + 1}/${rec.parts.length}（数十秒ずつ）`, true);
           texts.push(await transcribeBlob(part,
             `Online English lesson (Bizmates). A Japanese learner practices business English with a trainer. ` +
             `Mostly English; the learner occasionally speaks Japanese. Topic: ${ctx.topic}. ` +
@@ -261,7 +267,7 @@ export function setupAI(hooks) {
       if (!transcript) throw new Error('録音か文字起こしがありません');
       // 録音から作った文字起こしなら、相手の声が入っているかを AI に伝える（貼り付けたものは伝えない）
       const audio = rec.transcript && transcript === rec.transcript ? rec.audio : undefined;
-      say('Claude がフィードバックを作成中…（1分ほど）');
+      say('Claude がフィードバックを作成中…（1分ほど）', true);
       const fb = await getFeedback({ transcript, audio, ...ctx });
       if (hooks.autoFill) hooks.autoFill(fb);
       renderFeedback(fb, hooks, { readOnly: !!hooks.autoFill });

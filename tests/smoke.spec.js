@@ -379,15 +379,26 @@ test('Act の想定問答: 日本語 → 英語 → 次回これを言う', asyn
     status: 200, contentType: 'application/json',
     body: JSON.stringify({ html: '<section class="card"><h3>準備の3質問</h3><p>What do you do?</p></section>', common: '' }),
   }));
-  await page.route('**/api/ai/piece', (route) => route.fulfill({
-    status: 200, contentType: 'application/json',
-    body: JSON.stringify({ en_lines: ['Hiring is my job.', 'We hire someone every month.', 'So I do many interviews.', 'How do you hire people?'], rare_words: [], note_ja: '短くしました' }),
-  }));
+  let sent = null;
+  await page.route('**/api/ai/piece', async (route) => {
+    sent = JSON.parse(route.request().postData() || 'null');
+    await new Promise((r) => setTimeout(r, 700)); // 待っている間の表示を見るため
+    return route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ en_lines: ['Hiring is my job.', 'We hire someone every month.', 'So I do many interviews.', 'How do you hire people?'], rare_words: [], note_ja: '短くしました' }),
+    });
+  });
   await go(page, 'prep');
-  await page.fill('#prepActJa', '採用が私の担当\n毎月だれかを採用している\nだから毎週たくさん面接する\nあなたの会社はどうやって採用する？');
+  const ja = '採用が私の担当\n毎月だれかを採用している\nだから毎週たくさん面接する\nあなたの会社はどうやって採用する？';
+  await page.fill('#prepActJa', ja);
   await page.click('#prepActAI');
+  // 待っている間は「作業中」と分かる色になる
+  await expect(page.locator('#prepActNote')).toHaveClass(/working/);
   await expect(page.locator('#prepActEn')).toHaveValue(/How do you hire people\?/);
   await expect(page.locator('#prepActNote')).toContainText('短くしました');
+  await expect(page.locator('#prepActNote')).not.toHaveClass(/working/);
+  // 書いた日本語がそのまま届いている（文字列だけ送って ja が undefined になっていた）
+  expect(sent).toMatchObject({ ja, cat: '仕事' });
   await page.click('#prepActSave');
   await expect(page.locator('#toast')).toContainText('次回これを言う');
   await expect(page.locator('#prepPiece')).toContainText('Hiring is my job.');
